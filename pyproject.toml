@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "banditkit"
+version = "0.1.0"
+description = "Multi-armed, multi-objective and linear bandits behind one API, with experiments and figures."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Lilia Izri" }]
+dependencies = ["numpy>=1.22"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
