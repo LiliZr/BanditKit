@@ -2,7 +2,11 @@
 __version__ = "0.1.0"
 
 from .envs import (  # noqa: E402
+    BernoulliMAB,
+    EmpiricalMAB,
     Environment,
+    GaussianMAB,
+    GroupRecommendationMAB,
 )
 from .spec import EnvSpec, Observation  # noqa: E402
 
@@ -11,4 +15,8 @@ __all__ = [
     "EnvSpec",
     "Observation",
     "Environment",
+    "GaussianMAB",
+    "BernoulliMAB",
+    "EmpiricalMAB",
+    "GroupRecommendationMAB",
 ]
