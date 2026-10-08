@@ -9,6 +9,8 @@ from .envs import (  # noqa: E402
     GaussianMAB,
     GroupRecommendationMAB,
     LinearEnv,
+    MultiUserLinearEnv,
+    make_env,
 )
 from .spec import EnvSpec, Observation  # noqa: E402
 
@@ -17,10 +19,12 @@ __all__ = [
     "EnvSpec",
     "Observation",
     "Environment",
+    "make_env",
     "GaussianMAB",
     "BernoulliMAB",
     "EmpiricalMAB",
     "GroupRecommendationMAB",
     "LinearEnv",
     "DynamicLinearEnv",
+    "MultiUserLinearEnv",
 ]
