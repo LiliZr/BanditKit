@@ -12,6 +12,8 @@ from .envs import (  # noqa: E402
     MultiUserLinearEnv,
     make_env,
 )
+from .policies import *  # noqa: E402,F401,F403
+from .policies import __all__ as _policies_all  # noqa: E402
 from .spec import EnvSpec, Observation  # noqa: E402
 
 __all__ = [
@@ -27,4 +29,5 @@ __all__ = [
     "LinearEnv",
     "DynamicLinearEnv",
     "MultiUserLinearEnv",
+    *_policies_all,
 ]
