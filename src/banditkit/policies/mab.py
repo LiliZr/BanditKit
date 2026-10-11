@@ -17,7 +17,8 @@ from .._validation import ParamSpec
 from ..spec import EnvSpec, Observation
 from .base import Policy
 
-__all__ = ["Random", "EpsilonGreedy", "Softmax", "UCB1", "UCB1Tuned", "UCB1Normal", "UCBV", "UCBV2"]
+__all__ = ["Random", "EpsilonGreedy", "Softmax", "UCB1", "UCB1Tuned", "UCB1Normal", "UCBV", "UCBV2", "UCBMin",
+           "UCBMinV1", "UCBMinV2"]
 
 ALPHA = ParamSpec("float", default=1.0, low=0.0, doc="Multiplier of the exploration bonus (1: value of the paper).")
 REWARD_RANGE = ParamSpec("float", default=None, low=0.0, low_inclusive=False, allow_none=True,
@@ -282,3 +283,52 @@ class UCBV2(IndexPolicy):
 
     def _bonus(self) -> np.ndarray:
         return self.alpha * self._variance_bonus()
+
+
+class UCBMin(IndexPolicy):
+    """UCB-min: for each action, the smaller of the UCB1 bonus and a variance-aware bonus.
+
+    ``variant="v1"`` pairs UCB1 with UCB-V (UCB-minV1); ``variant="v2"`` pairs it
+    with UCB-V2 (UCB-minV2, needs the horizon). The choice is made per action and per step.
+    """
+
+    base_name = "UCBMin"
+    params = {
+        "variant": ParamSpec("choice", default="v1", choices=("v1", "v2"), doc="'v1': UCB-V bonus, 'v2': UCB-V2 bonus."),
+        "zeta": UCBV.params["zeta"],
+        "c": UCBV.params["c"],
+        "rho": UCBV2.params["rho"],
+    }
+
+    def _check_spec(self, spec: EnvSpec) -> None:
+        if self.variant == "v2":
+            UCBV2._check_spec(self, spec)
+
+    def _reset(self) -> None:
+        super()._reset()
+        self._variance_bonus_used = np.zeros(self.spec.n_actions, dtype=bool)
+
+    def _bonus(self) -> np.ndarray:
+        ucb1_bonus = self.reward_amplitude * np.sqrt(2.0 * self._log_t() / self.counts)
+        variance_bonus = (UCBV if self.variant == "v1" else UCBV2)._variance_bonus(self)
+        self._variance_bonus_used = variance_bonus < ucb1_bonus
+        return self.alpha * np.minimum(ucb1_bonus, variance_bonus)
+
+    @property
+    def label(self) -> str:
+        return self._params.get("name") or ("UCBMinV1" if self.variant == "v1" else "UCBMinV2")
+
+    def diagnostics(self) -> Dict[str, Any]:
+        return {**super().diagnostics(), "variance_bonus_used": self._variance_bonus_used.copy()}
+
+
+class UCBMinV1(UCBMin):
+    """UCB-minV1: per-action minimum of the UCB1 and UCB-V bonuses."""
+
+    params = {"variant": ParamSpec("choice", default="v1", choices=("v1",), doc="Fixed to 'v1'.")}
+
+
+class UCBMinV2(UCBMin):
+    """UCB-minV2: per-action minimum of the UCB1 and UCB-V2 bonuses (needs the horizon)."""
+
+    params = {"variant": ParamSpec("choice", default="v2", choices=("v2",), doc="Fixed to 'v2'.")}
