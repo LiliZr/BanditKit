@@ -17,8 +17,8 @@ from .._validation import ParamSpec
 from ..spec import EnvSpec, Observation
 from .base import Policy
 
-__all__ = ["Random", "EpsilonGreedy", "Softmax", "UCB1", "UCB1Tuned", "UCB1Normal", "UCBV", "UCBV2", "UCBMin",
-           "UCBMinV1", "UCBMinV2"]
+__all__ = ["Random", "EpsilonGreedy", "Softmax", "UCB1", "UCB1Tuned", "UCB1Normal", "UCBV", "UCBV2",
+           "UCBMin", "UCBMinV1", "UCBMinV2", "EUCBV", "KLUCB"]
 
 ALPHA = ParamSpec("float", default=1.0, low=0.0, doc="Multiplier of the exploration bonus (1: value of the paper).")
 REWARD_RANGE = ParamSpec("float", default=None, low=0.0, low_inclusive=False, allow_none=True,
@@ -332,3 +332,111 @@ class UCBMinV2(UCBMin):
     """UCB-minV2: per-action minimum of the UCB1 and UCB-V2 bonuses (needs the horizon)."""
 
     params = {"variant": ParamSpec("choice", default="v2", choices=("v2",), doc="Fixed to 'v2'.")}
+
+
+class EUCBV(MABPolicy):
+    """Efficient-UCBV (Mukherjee et al., 2018): UCB-V with arm elimination.
+
+    Index ``mean + sqrt(rho (v + 2) ln(psi T eps_m) / (4 n))`` over the active actions
+    (rewards rescaled by b). An action is eliminated at every step where its upper
+    bound falls below the best lower bound; phases halve eps_m. Theorem 1 of the
+    paper uses rho = 1/2 and psi = T / K^2 (the defaults) and assumes T >= K^2.4.
+    """
+
+    base_name = "EUCBV"
+    params = {
+        "rho": ParamSpec("float", default=0.5, low=0.0, low_inclusive=False, doc="Exploration constant rho."),
+        "psi": ParamSpec("float", default=None, low=0.0, low_inclusive=False, allow_none=True,
+                         doc="Exploration regulator psi (None: T / K^2)."),
+    }
+
+    def _check_spec(self, spec: EnvSpec) -> None:
+        if spec.horizon is None:
+            raise ValueError("EUCBV needs the horizon T: give EnvSpec(horizon=...) or use an Experiment.")
+        if spec.horizon < spec.n_actions ** 2.4:
+            warnings.warn(f"EUCBV's analysis assumes T >= K^2.4 (here T={spec.horizon}, K={spec.n_actions}).", stacklevel=3)
+
+    def _reset(self) -> None:
+        super()._reset()
+        T, K = self.spec.horizon, self.spec.n_actions
+        self._psi = self.psi if self.psi is not None else T / K ** 2
+        self.active = np.ones(K, dtype=bool)
+        self._eps = 1.0
+        self._phase = 0
+        self._last_phase = int(math.floor(0.5 * math.log2(max(T / math.e, 1.0))))
+        self._phase_pulls = self._pulls_per_action()
+        self._phase_end = K * self._phase_pulls
+
+    def _pulls_per_action(self) -> int:
+        """n_m = ceil(ln(psi T eps_m^2) / (2 eps_m))."""
+        x = self._psi * self.spec.horizon * self._eps ** 2
+        return max(1, math.ceil(math.log(x) / (2.0 * self._eps))) if x > 1 else 1
+
+    def _radius(self) -> np.ndarray:
+        x = self._psi * self.spec.horizon * self._eps
+        log_term = max(math.log(x), 0.0) if x > 0 else 0.0
+        b = self.reward_amplitude
+        return b * np.sqrt(self.rho * (self.variances / b ** 2 + 2.0) * log_term / (4.0 * np.maximum(self.counts, 1)))
+
+    def _predict(self, obs: Observation) -> int:
+        action = self._unpulled_action()
+        if action is not None:
+            return action
+        active = np.flatnonzero(self.active)
+        if active.size == 1:
+            return int(active[0])
+        index = self.means[active] + self._radius()[active]
+        return int(active[argmax_random(index, self.rng)])
+
+    def _update(self, obs: Observation, action: int, reward: np.ndarray, scalar_reward: float) -> None:
+        super()._update(obs, action, reward, scalar_reward)
+        if self._n_unpulled > 0:
+            return
+        active = np.flatnonzero(self.active)
+        if active.size > 1:
+            radius = self._radius()[active]
+            upper, lower = self.means[active] + radius, self.means[active] - radius
+            self.active[active[upper < lower.max()]] = False
+        if self.t >= self._phase_end and self._phase <= self._last_phase:
+            self._eps /= 2.0
+            self._phase_pulls = self._pulls_per_action()
+            self._phase_end = self.t + int(self.active.sum()) * self._phase_pulls
+            self._phase += 1
+
+    def diagnostics(self) -> Dict[str, Any]:
+        return {**super().diagnostics(), "active": self.active.copy()}
+
+
+def _kl_bernoulli(p: np.ndarray, q: np.ndarray) -> np.ndarray:
+    p, q = np.clip(p, 1e-15, 1 - 1e-15), np.clip(q, 1e-15, 1 - 1e-15)
+    return p * np.log(p / q) + (1 - p) * np.log((1 - p) / (1 - q))
+
+
+class KLUCB(IndexPolicy):
+    """KL-UCB for bounded rewards (Garivier and Cappe, 2011).
+
+    Index: the largest q with ``n * kl(mean / b, q) <= ln t + c ln ln t``, where kl
+    is the Bernoulli divergence, times b. ``alpha`` is not used. The default c = 3
+    is the value of the paper's theorem; its experiments use c = 0.
+    """
+
+    base_name = "KLUCB"
+    default_search_params = ("c",)
+    params = {"c": ParamSpec("float", default=3.0, low=0.0,
+                             doc="Weight of the ln ln t term (3: value of the theorem; the paper's experiments use 0).")}
+
+    def _predict(self, obs: Observation) -> int:
+        action = self._unpulled_action()
+        if action is not None:
+            return action
+        log_t = self._log_t()
+        level = (log_t + self.c * math.log(max(log_t, 1.0))) / self.counts
+        p = np.clip(self.means / self.reward_amplitude, 0.0, 1.0)
+        low, high = p.copy(), np.ones_like(p)
+        for _ in range(30):  # bisection on q in [p, 1]
+            mid = 0.5 * (low + high)
+            inside = _kl_bernoulli(p, mid) <= level
+            low, high = np.where(inside, mid, low), np.where(inside, high, mid)
+        index = low * self.reward_amplitude
+        self._last_bonus = index - self.means
+        return argmax_random(index, self.rng)
