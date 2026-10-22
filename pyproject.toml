@@ -11,5 +11,8 @@ requires-python = ">=3.10"
 authors = [{ name = "Lilia Izri" }]
 dependencies = ["numpy>=1.22"]
 
+[project.optional-dependencies]
+analysis = ["pandas>=1.5"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
