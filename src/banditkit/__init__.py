@@ -12,6 +12,7 @@ from .envs import (  # noqa: E402
     MultiUserLinearEnv,
     make_env,
 )
+from .experiment import DEFAULT_PARAM_GRID, TRACKABLE, Experiment  # noqa: E402
 from .policies import *  # noqa: E402,F401,F403
 from .policies import __all__ as _policies_all  # noqa: E402
 from .results import Results  # noqa: E402
@@ -30,6 +31,9 @@ __all__ = [
     "LinearEnv",
     "DynamicLinearEnv",
     "MultiUserLinearEnv",
+    "Experiment",
+    "TRACKABLE",
+    "DEFAULT_PARAM_GRID",
     "Results",
     *_policies_all,
 ]

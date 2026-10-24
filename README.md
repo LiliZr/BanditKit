@@ -3,6 +3,19 @@
 Multi-armed, multi-objective and linear bandits behind one API, with reproducible
 experiments, publication figures and explanatory figures.
 
+* **Any numerical data**: environments take plain NumPy arrays (mean rewards, action
+  features, user parameters...). Bring your own data and your own preprocessing; see
+  [Your own data](#your-own-data).
+* **One API for four families**: classical MAB, multi-objective MAB, linear bandits,
+  and efficient linear bandits (random projections, sketches, arm buckets, clustering of users).
+* **The family is detected from the data**: `make_env(means=...)` is a MAB,
+  `make_env(action_features=..., theta=...)` a linear bandit. A parameter that does
+  not apply to the detected family raises an error that says where it applies.
+* **Strict validation**: shapes, signs and ranges of every input are checked when
+  objects are built, with messages that name the parameter.
+* **Names of the big RL / ML libraries**: Gymnasium's `reset` / `step`, Stable-Baselines3's
+  `predict`, `train_freq`, `log_interval`, scikit-learn's `get_params`, `n_jobs`, `n_components`.
+
 ## Policies
 
 | Family | Policies |
@@ -18,6 +31,20 @@ projection, `projection="gaussian"` or `"fjlt"`), `n_buckets` (arm buckets), `us
 (clustering of users). Labels follow them: `LinUCB_RP_AB`, `LinUCB_IND_RP_AB_KMeans`.
 
 `help(bk.LinUCB)` lists every parameter with its type, range, default and meaning.
+
+## Experiments and results
+
+`Experiment(env, policies, horizon, n_runs, weights, seed, n_jobs, log_interval,
+timeout, train_freq, track, measure_memory, param_grid, search_runs, search_metric,
+checkpoint_dir, verbose, callback)`. Use 10 to 20 runs or more to compare policies.
+Within a run all policies see the same environment randomness. The regret is
+`max_a w.mu_a - w.r_t` summed over steps (observed rewards); `track=["pseudo_regret"]`
+adds the noise-free version. Multi-objective problems can also track `pareto_regret`,
+`pareto_share` (share of pulls on Pareto optimal arms) and `unfairness` (spread of the
+pulls among them); `bk.TRACKABLE` lists every option.
+
+`Results` holds curves of shape (n_runs, n_points): `summary()`, `to_latex()`,
+`to_dataframe()`, `save()`, `load()`, `merge()` (runs from several machines).
 
 ## References
 
