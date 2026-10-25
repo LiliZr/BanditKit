@@ -17,6 +17,7 @@ from .policies import *  # noqa: E402,F401,F403
 from .policies import __all__ as _policies_all  # noqa: E402
 from .results import Results  # noqa: E402
 from .spec import EnvSpec, Observation  # noqa: E402
+from .trace import Trace, trace  # noqa: E402
 
 __all__ = [
     "__version__",
@@ -35,5 +36,7 @@ __all__ = [
     "TRACKABLE",
     "DEFAULT_PARAM_GRID",
     "Results",
+    "Trace",
+    "trace",
     *_policies_all,
 ]

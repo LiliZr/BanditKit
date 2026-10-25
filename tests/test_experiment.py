@@ -120,6 +120,13 @@ def test_partial_fit_warm_start():
     assert policy.models[0].n_obs == 10
 
 
+def test_trace_records_every_step():
+    tr = bk.trace(bk.BernoulliMAB([0.2, 0.8]), bk.UCB1(), horizon=200, every=10)
+    assert tr.actions.shape == (200,) and tr.rewards.shape == (200, 1)
+    assert tr.snapshots["bonus"].shape == (tr.snapshot_steps.size, 2)
+    assert np.all(np.diff(tr.regret) > -1.0)
+
+
 def test_group_recommendation_means_are_exact():
     rng = np.random.default_rng(0)
     R = rng.uniform(size=(6, 3))
