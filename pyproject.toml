@@ -14,6 +14,7 @@ dependencies = ["numpy>=1.22"]
 [project.optional-dependencies]
 analysis = ["pandas>=1.5"]
 plot = ["matplotlib>=3.6"]
+interactive = ["plotly>=5.15"]
 dev = ["pytest>=7"]
 
 [tool.setuptools.packages.find]

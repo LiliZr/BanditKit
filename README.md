@@ -16,6 +16,47 @@ experiments, publication figures and explanatory figures.
 * **Names of the big RL / ML libraries**: Gymnasium's `reset` / `step`, Stable-Baselines3's
   `predict`, `train_freq`, `log_interval`, scikit-learn's `get_params`, `n_jobs`, `n_components`.
 
+## Quick start
+
+```python
+import numpy as np
+import banditkit as bk
+
+# Classical MAB: the generic UCB becomes UCB1
+env = bk.make_env(means=[0.2, 0.5, 0.7], noise_std=0.1)
+results = bk.Experiment(env, [bk.UCB(), bk.UCBV(), bk.UCBMinV1(), bk.ThompsonSampling()],
+                        horizon=5000, n_runs=20, seed=0).run()
+results.plot("regret", band="ci95")[0].savefig("regret.pdf")
+print(results.to_latex())
+
+# Multi-objective MAB: reward vectors of dimension 2, scalarized by `weights`
+env = bk.make_env(means=[[0.9, 0.1], [0.1, 0.9], [0.5, 0.5]], noise_std=0.1)
+res = bk.Experiment(env, [bk.UCB1(), bk.ParetoUCB1()], horizon=5000, n_runs=10, weights=[0.5, 0.5],
+                    track=["pareto_share", "pareto_regret", "unfairness"]).run()
+from banditkit import plot
+plot.pareto_panel(res)  # the three measures of Drugan and Nowe (2013)
+
+# Linear bandit: the same generic UCB becomes LinUCB; techniques stack as parameters
+X = np.random.default_rng(0).normal(size=(1000, 50))
+env = bk.make_env(action_features=X / np.linalg.norm(X, axis=1, keepdims=True), theta=np.ones(50) / 50 ** 0.5)
+policies = [bk.UCB(), bk.LinUCB(n_components=10), bk.LinUCB(n_components=10, n_buckets="sqrt"),
+            bk.SOFUL(sketch_size=10), bk.CBSCFD(sketch_size=10), bk.LinTS()]
+bk.Experiment(env, policies, horizon=10_000, n_runs=10, n_jobs=-1).run()  # n_jobs > 1: from a .py file or a notebook
+```
+
+Online use, one step at a time (Gymnasium loop):
+
+```python
+obs, info = env.reset(seed=0)
+policy = bk.LinUCB()
+policy.reset(env.spec, seed=0)
+for t in range(1000):
+    action = policy.predict(obs)
+    next_obs, reward, terminated, truncated, info = env.step(action)
+    policy.update(obs, action, reward)
+    obs = next_obs
+```
+
 ## Policies
 
 | Family | Policies |
@@ -45,6 +86,23 @@ pulls among them); `bk.TRACKABLE` lists every option.
 
 `Results` holds curves of shape (n_runs, n_points): `summary()`, `to_latex()`,
 `to_dataframe()`, `save()`, `load()`, `merge()` (runs from several machines).
+
+## Figures
+
+Publication figures (`banditkit.plot`, matplotlib), on the runs of an experiment:
+`curves`, `panel`, `pareto_panel`, `tradeoff`, `sensitivity`, `search_landscape`,
+`dispersion`, `performance_profile`. Color = algorithm family,
+marker = combination of techniques, hollow marker = variant. Band: `"std"`,
+`"ci95"`, `"quantiles"` or `None`. `style="science"` uses SciencePlots.
+
+Explanatory figures (`banditkit.plot.interactive`, plotly). Most show how a policy
+decides, on one detailed run `tr = bk.trace(env, policy, horizon)`: `estimates`,
+`why_this_arm`, `beliefs`, `prob_best`, `ellipsoid`, `ucbmin_choice`, `bucket_choice`.
+`allocation`, `regret_by_arm` and `clusters` also accept a list of traces (several
+runs) and average them. `gain_vs_uniform(results, env)` compares policies over the
+runs of an experiment. `scalarization(env)` shows which Pareto
+optimal arms a linear scalarization can choose (two objectives).
+`examples/figure_gallery.py` builds a page with all of them.
 
 ## References
 
