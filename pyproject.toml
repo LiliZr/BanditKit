@@ -15,6 +15,8 @@ dependencies = ["numpy>=1.22"]
 analysis = ["pandas>=1.5"]
 plot = ["matplotlib>=3.6"]
 interactive = ["plotly>=5.15"]
+datasets = ["pandas>=1.5", "scipy>=1.9"]
+all = ["pandas>=1.5", "matplotlib>=3.6", "plotly>=5.15", "scipy>=1.9"]
 dev = ["pytest>=7"]
 
 [tool.setuptools.packages.find]
