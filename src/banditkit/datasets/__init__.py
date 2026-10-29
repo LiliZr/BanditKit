@@ -5,6 +5,8 @@ the environments. Needs pandas and scipy (``pip install banditkit[datasets]``).
 """
 from .base import LinearDataset, filter_min_counts, load_npz, ratings_to_linear
 from .movielens import MOVIELENS_VARIANTS, fetch_movielens, get_data_home, movielens_linear
+from .steam import load_steam, steam_linear
 
 __all__ = ["LinearDataset", "load_npz", "ratings_to_linear", "filter_min_counts",
-           "fetch_movielens", "movielens_linear", "MOVIELENS_VARIANTS", "get_data_home"]
+           "fetch_movielens", "movielens_linear", "MOVIELENS_VARIANTS", "get_data_home",
+           "load_steam", "steam_linear"]
