@@ -16,6 +16,15 @@ experiments, publication figures and explanatory figures.
 * **Names of the big RL / ML libraries**: Gymnasium's `reset` / `step`, Stable-Baselines3's
   `predict`, `train_freq`, `log_interval`, scikit-learn's `get_params`, `n_jobs`, `n_components`.
 
+## Install
+
+```bash
+pip install -e ".[all]"     # numpy, pandas, scipy, matplotlib, plotly
+pip install -e ".[dev]"     # + pytest
+```
+
+Python 3.10 or later. Only numpy is required; the extras add analysis, figures and datasets.
+
 ## Quick start
 
 ```python
@@ -103,6 +112,68 @@ runs) and average them. `gain_vs_uniform(results, env)` compares policies over t
 runs of an experiment. `scalarization(env)` shows which Pareto
 optimal arms a linear scalarization can choose (two objectives).
 `examples/figure_gallery.py` builds a page with all of them.
+
+## Your own data
+
+banditkit is meant to test bandits on any numerical data. Environments take plain
+arrays; where they come from does not matter. Any dataset and any preprocessing work,
+as long as the output has these types:
+
+| Problem | Arrays you provide | Environment |
+| --- | --- | --- |
+| MAB, multi-objective MAB | `means` (K,) or (K, D) | `make_env(means=means, noise_std=0.1)` |
+| MAB from observed rewards | `samples`: K arrays, each (n_k,) or (n_k, D) | `make_env(samples=samples)` |
+| Linear bandit | `action_features` (K, d), `theta` (d,) or (D, d) | `make_env(action_features=X, theta=theta)` |
+| Multi-user linear bandit | `action_features` (K, d), `user_thetas` (U, d) or (U, D, d), optional `user_stream` (T,) of user indices | `make_env(action_features=X, user_thetas=thetas, user_stream=stream)` |
+| Group recommendation | `relevance` (n_members, K) in [0, 1], for a group you formed | `GroupRecommendationMAB(relevance)` |
+
+The same arrays can be saved in an `.npz` file and read with `datasets.load_npz(path)`
+(keys in `banditkit/datasets/base.py`). `.npz` files of the Scaling-Linear-Bandits
+repository load as is. For a setting outside this table, subclass `bk.Environment`.
+
+## Datasets: example preprocessing
+
+> **The dataset functions are EXAMPLES of preprocessing.** They show one simple,
+> documented way to turn MovieLens and Steam into bandit environments. They are not
+> the reference preprocessing of these datasets, and nothing else in banditkit depends
+> on them. Adapt them, or replace them with your own pipeline, as long as the output
+> keeps the types of [Your own data](#your-own-data).
+
+```python
+from banditkit import datasets
+
+data = datasets.movielens_linear("1m", n_features=100)   # downloads MovieLens once
+env = data.to_env()                                     # multi-user linear bandit
+steam = datasets.steam_linear("path/to/kaggle/steam")   # Kaggle files, downloaded by hand
+```
+
+Default choices of the example pipeline (`datasets.ratings_to_linear`, usable on any
+ratings table with columns `user_id`, `item_id`, `rating`):
+
+1. keep users and items with at least 20 ratings;
+2. item features: side features, rating statistics, then an SVD of the rating matrix
+   up to `n_features`, standardized, with a bias column, rows of norm 1;
+3. one ridge regression per user gives `user_thetas`;
+4. the user stream follows the order of the ratings.
+
+### Real rewards for classical MABs
+
+Thompson Sampling and KL-UCB come with guarantees for Bernoulli or Gaussian rewards.
+Real rewards are skewed, heavy-tailed or discrete. These example environments resample
+rewards actually observed for each action (`EmpiricalMAB`, rewards mapped to [0, 1]):
+
+| Function | Actions | Reward | Data |
+| --- | --- | --- | --- |
+| `taxis_mab()` | NYC pickup zones | fare (or total, tip rate) of a real trip | 6,433 trips, downloaded once from GitHub |
+| `movielens_mab("1m")` | genres, or the most rated movies | a real rating / 5 | MovieLens, downloaded once |
+| `steam_mab(path)` | the most reviewed games | hours played (capped at the 99th percentile) | Kaggle files |
+
+`datasets.rewards_to_mab({"action": observed_rewards, ...})` builds the same environment
+from any data.
+
+Group recommendation has no dataset function: groups depend on how they are formed
+(an API, a choice of the experimenter...). Build the relevance matrix of each group
+with your own pipeline and pass it to `GroupRecommendationMAB`.
 
 ## References
 
