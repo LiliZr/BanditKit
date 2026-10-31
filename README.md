@@ -96,6 +96,31 @@ pulls among them); `bk.TRACKABLE` lists every option.
 `Results` holds curves of shape (n_runs, n_points): `summary()`, `to_latex()`,
 `to_dataframe()`, `save()`, `load()`, `merge()` (runs from several machines).
 
+### One problem or several instances
+
+A synthetic experiment can run on one problem, or on several instances of the same
+kind of problem:
+
+* **one instance**: `Experiment(env, ...)`. The regret measures the policies on this
+  problem only (one theta, one action set).
+* **several instances**: `Experiment([env_1, ..., env_m], ...)`. Each instance gets
+  `n_runs` runs and results pool them, so averages are over problems too (Bayesian
+  regret). Use it to say which policy is better on a kind of problem.
+
+```python
+instances = bk.sample_instances("linear", 10, n_actions=1000, n_features=20, noise_std=0.1, seed=0)
+res = bk.Experiment(instances, [bk.LinUCB(), bk.CBRAP(n_components=10)], horizon=5000, n_runs=5).run()
+res.compare("LinUCB", "CBRAP")         # paired over instances: mean difference, 95% CI, share of wins
+plot.performance_profile(res.by_instance())
+```
+
+Pooling makes sense only if the instances share one distribution: same number of
+actions, dimension, noise level and norm of theta, so that regrets have the same scale.
+`sample_instances` draws them this way (`"bernoulli"`, `"gaussian"`, `"linear"`), and
+`min_gap` redraws instances whose two best actions are almost tied. Compare policies
+instance by instance (`compare`, `performance_profile`) as well as on the pooled mean,
+since a few hard instances can dominate a mean.
+
 ## Figures
 
 Publication figures (`banditkit.plot`, matplotlib), on the runs of an experiment:

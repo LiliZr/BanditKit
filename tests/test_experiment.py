@@ -149,6 +149,24 @@ def test_pareto_share_and_unfairness():
     assert np.allclose(res.final("unfairness")["Random"], counts[:, :2].var(axis=1))
 
 
+def test_instances_and_compare():
+    envs = bk.sample_instances("linear", 3, n_actions=20, n_features=4, noise_std=0.1, min_gap=0.05, seed=0)
+    assert len(envs) == 3 and all(np.allclose(e.spec.theta_norm, 1.0) for e in envs)
+    res = bk.Experiment(envs, [bk.LinUCB(), bk.Random()], horizon=200, n_runs=2, seed=0, verbose=0).run()
+    assert res.n_runs == 6 and res.n_instances == 3
+    assert list(res.arrays["LinUCB"]["instance"]) == [0, 0, 1, 1, 2, 2]
+    assert res.instance_means()["LinUCB"].shape == (3,)
+    cmp = res.compare("LinUCB", "Random")
+    assert cmp["pairs"] == "instances" and cmp["a_lower_share"] == 1.0
+    parts = res.by_instance()
+    assert set(parts) == {0, 1, 2} and parts[1].n_runs == 2
+    for kind in ("bernoulli", "gaussian"):
+        mabs = bk.sample_instances(kind, 4, n_actions=5, min_gap=0.1, seed=1)
+        assert all(np.diff(np.sort(e.mean_rewards(e.reset(seed=0)[0])[:, 0]))[-1] >= 0.1 for e in mabs)
+    with pytest.raises(ValueError, match="same kind"):
+        bk.Experiment([envs[0], bk.make_env(means=[0.1, 0.2])], [bk.Random()], horizon=10)
+
+
 def test_param_search_picks_the_best_combination():
     env = bk.make_env(means=[0.3, 0.5, 0.7], noise_std=0.1)
     res = bk.Experiment(env, [bk.UCB1(), bk.GaussianThompsonSampling()], horizon=300, n_runs=2, seed=0, verbose=0,
