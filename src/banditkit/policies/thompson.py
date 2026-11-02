@@ -73,7 +73,7 @@ class GaussianThompsonSampling(MABPolicy):
                 self._note("from_problem", f"sigma: sigma={known:.3g}")
             else:
                 self._sigma = 1.0
-                self._note("assumed", "sigma=1 (unknown for this environment)")
+                self._note("assumed", "sigma=1 (unknown for this problem)")
 
     def _posterior(self):
         n_plus_one = self.counts + 1.0

@@ -28,9 +28,10 @@ class RidgeModel:
     theta : (dim,) ridge estimate ``V^-1 b``.
     n_obs : number of observations.
     buckets : optional :class:`ActionBuckets` attached to this model.
+    buckets_on : the action features the buckets were built on (rebuilt when the action set changes).
     """
 
-    __slots__ = ("V_inv", "V", "b", "theta", "n_obs", "buckets", "steps_since_rebucket")
+    __slots__ = ("V_inv", "V", "b", "theta", "n_obs", "buckets", "buckets_on", "steps_since_rebucket")
 
     def __init__(self, dim: int, lambda_: float, dtype=np.float64, keep_V: bool = False) -> None:
         self.V_inv = np.eye(dim, dtype=dtype) / lambda_
@@ -39,6 +40,7 @@ class RidgeModel:
         self.theta = np.zeros(dim, dtype=dtype)
         self.n_obs = 0
         self.buckets: Optional[ActionBuckets] = None
+        self.buckets_on: Optional[np.ndarray] = None
         self.steps_since_rebucket = 0
 
     def update(self, x: np.ndarray, reward: float) -> None:

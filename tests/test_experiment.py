@@ -116,8 +116,8 @@ def test_partial_fit_warm_start():
     rewards = [env.mean_reward(a, obs) for a in actions]
     policy = bk.LinUCB()
     policy.reset(env.spec)
-    policy.partial_fit([obs] * 10, actions, rewards)
-    assert policy.models[0].n_obs == 10
+    policy.partial_fit(actions, rewards, action_features=obs.action_features)
+    assert policy.models[0].n_obs == 10 and policy.n_samples_seen_ == 10
 
 
 def test_trace_records_every_step():

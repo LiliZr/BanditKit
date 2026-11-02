@@ -255,7 +255,8 @@ class SCLUB(ClusteringPolicy):
     def _check_spec(self, spec: EnvSpec) -> None:
         super()._check_spec(spec)
         if self.bonus == "paper" and spec.horizon is None:
-            raise ValueError("SCLUB(bonus='paper') needs the horizon T.")
+            raise ValueError("SCLUB(bonus='paper') needs the horizon T: fit(..., horizon=T), EnvSpec(horizon=T) "
+                             "or an Experiment.")
 
     def _reset(self) -> None:
         super()._reset()

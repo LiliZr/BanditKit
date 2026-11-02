@@ -33,7 +33,7 @@ class GenericPolicy(Policy):
         self.spec = None
         self._ready = False
 
-    def get_params(self) -> Dict[str, Any]:
+    def get_params(self, deep: bool = True) -> Dict[str, Any]:
         return dict(self._params)
 
     def _target(self, spec: EnvSpec) -> Type[Policy]:
@@ -53,6 +53,7 @@ class GenericPolicy(Policy):
         self.inner = target(**self._params)
         self.inner.reset(spec, weights, seed)
         self.spec, self.weights, self._ready = spec, self.inner.weights, True
+        self._start_counts(spec)
 
     def _predict(self, obs: Observation) -> int:
         return self.inner._predict(obs)

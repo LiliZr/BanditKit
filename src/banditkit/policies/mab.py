@@ -41,7 +41,7 @@ class MABPolicy(Policy):
             if self.spec.reward_range is not None:
                 self._note("from_problem", f"reward_range: b={self.spec.reward_range:.3g}")
             else:
-                self._note("assumed", "reward_range: b=1 (unknown for this environment)")
+                self._note("assumed", "reward_range: b=1 (unknown for this problem)")
         self.counts = np.zeros(n_actions, dtype=np.int64)    # pulls of each action
         self.means = np.zeros(n_actions)                     # mean scalarized reward
         self.mean_vectors = np.zeros((n_actions, reward_dim))  # mean reward vector
@@ -274,7 +274,8 @@ class UCBV2(IndexPolicy):
 
     def _check_spec(self, spec: EnvSpec) -> None:
         if spec.horizon is None:
-            raise ValueError(f"{type(self).__name__} needs the horizon T: give EnvSpec(horizon=...) or use an Experiment.")
+            raise ValueError(f"{type(self).__name__} needs the horizon T: fit(..., horizon=T), "
+                             "EnvSpec(horizon=T) or an Experiment.")
 
     def _variance_bonus(self) -> np.ndarray:
         level = self.rho * math.log(max(self.spec.horizon, 2))
@@ -352,7 +353,7 @@ class EUCBV(MABPolicy):
 
     def _check_spec(self, spec: EnvSpec) -> None:
         if spec.horizon is None:
-            raise ValueError("EUCBV needs the horizon T: give EnvSpec(horizon=...) or use an Experiment.")
+            raise ValueError("EUCBV needs the horizon T: fit(..., horizon=T), EnvSpec(horizon=T) or an Experiment.")
         if spec.horizon < spec.n_actions ** 2.4:
             warnings.warn(f"EUCBV's analysis assumes T >= K^2.4 (here T={spec.horizon}, K={spec.n_actions}).", stacklevel=3)
 

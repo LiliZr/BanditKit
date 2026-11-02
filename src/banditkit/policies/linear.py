@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -72,6 +72,7 @@ class LinearPolicy(Policy):
         self._raw_features = None   # last action_features seen, to detect a change of action set
         self._features = None       # their working (projected) version
         self._L = 1.0
+        self._feature_cache: List[Tuple[np.ndarray, np.ndarray, float]] = []  # last two action sets
         # Constants R and S of the theoretical radius: given, read from the environment, or assumed.
         self._R = self._bound_constant("subgaussian", "R", self.subgaussian, spec.scalar_noise_std(self.weights))
         self._S = self._bound_constant("theta_bound", "S", self.theta_bound, spec.scalar_theta_norm(self.weights))
@@ -82,22 +83,31 @@ class LinearPolicy(Policy):
         if known is not None:
             self._note("from_problem", f"{param}: {symbol}={known:.3g}")
             return known
-        self._note("assumed", f"{param}: {symbol}=1 (unknown for this environment)")
+        self._note("assumed", f"{param}: {symbol}=1 (unknown for this problem)")
         return 1.0
 
     def _working_features(self, obs: Observation) -> np.ndarray:
-        """Features in the working space; recomputed only when the action set changes."""
+        """Features in the working space; recomputed only when the action set changes.
+
+        The last two action sets are cached, so that alternating between a
+        candidate set and single played actions (scikit-learn style loop) does
+        not project the candidates again.
+        """
         X = obs.action_features
         if X is None:
             raise ValueError(f"{type(self).__name__} needs action features in the observation.")
         if X is not self._raw_features:
-            Z = X if self.projection_matrix is None else X @ self.projection_matrix.T
-            self._features = np.ascontiguousarray(Z, dtype=self._float)
-            self._raw_features = X
-            if self.feature_bound is not None and self.projection_matrix is None:
-                self._L = self.feature_bound
-            else:
-                self._L = float(np.linalg.norm(self._features, axis=1).max()) or 1.0
+            entry = next((e for e in self._feature_cache if e[0] is X), None)
+            if entry is None:
+                Z = X if self.projection_matrix is None else X @ self.projection_matrix.T
+                Z = np.ascontiguousarray(Z, dtype=self._float)
+                if self.feature_bound is not None and self.projection_matrix is None:
+                    L = self.feature_bound
+                else:
+                    L = float(np.linalg.norm(Z, axis=1).max()) or 1.0
+                entry = (X, Z, L)
+            self._feature_cache = [entry] + [e for e in self._feature_cache if e is not entry][:1]
+            self._raw_features, self._features, self._L = entry
         return self._features
 
     def _beta(self, n_obs: int) -> float:
@@ -148,15 +158,20 @@ class BucketedPolicy(LinearPolicy):
         return model
 
     def _attach_buckets(self, model: RidgeModel, X: np.ndarray) -> None:
-        """(Re)build the buckets of ``model`` from its current estimate."""
+        """(Re)build the buckets of ``model`` on the actions X from its current estimate."""
         if self._n_buckets is not None:
-            model.buckets = ActionBuckets(self.spec.n_actions, self._n_buckets, self.refresh_champions)
+            K = X.shape[0]
+            n_buckets = max(1, round(math.sqrt(K))) if self.n_buckets == "sqrt" else self.n_buckets
+            model.buckets = ActionBuckets(K, n_buckets, self.refresh_champions)
             model.buckets.rebuild(X @ model.theta, self.rng)
+            model.buckets_on = X
             model.steps_since_rebucket = 0
 
     def _ucb_action(self, X: np.ndarray, model: RidgeModel, theta: np.ndarray, width_scale: float) -> int:
         """UCB argmax of ``model`` (through its buckets if any)."""
         if model.buckets is not None:
+            if model.buckets_on is not X:  # new action set: buckets of the old one are meaningless
+                self._attach_buckets(model, X)
             action = model.buckets.select(X, theta, model.V_inv, width_scale, self.rng)
             self._last_bucket = model.buckets.last_bucket
             self._last_buckets = model.buckets  # read by bk.trace for the bucket figure
@@ -164,7 +179,8 @@ class BucketedPolicy(LinearPolicy):
         return argmax_random(X @ theta + width_scale * weighted_norms(X, model.V_inv), self.rng)
 
     def _rebuild_buckets_if_due(self, model: RidgeModel, X: np.ndarray, width_scale: float) -> None:
-        if model.buckets is not None and model.steps_since_rebucket >= self.bucket_rebuild_freq:
+        if (model.buckets is not None and model.buckets_on is X
+                and model.steps_since_rebucket >= self.bucket_rebuild_freq):
             scores = X @ model.theta
             if self.bucket_by_ucb:
                 scores = scores + width_scale * weighted_norms(X, model.V_inv)

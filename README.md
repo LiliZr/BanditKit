@@ -14,7 +14,9 @@ experiments, publication figures and explanatory figures.
 * **Strict validation**: shapes, signs and ranges of every input are checked when
   objects are built, with messages that name the parameter.
 * **Names of the big RL / ML libraries**: Gymnasium's `reset` / `step`, Stable-Baselines3's
-  `predict`, `train_freq`, `log_interval`, scikit-learn's `get_params`, `n_jobs`, `n_components`.
+  `predict`, `train_freq`, `log_interval`, scikit-learn's `fit`, `partial_fit`, `get_params`,
+  `n_jobs`, `n_components`. A policy works alone on data, as a scikit-learn estimator; see
+  [One policy on data](#one-policy-on-data-as-a-scikit-learn-estimator).
 
 ## Install
 
@@ -65,6 +67,36 @@ for t in range(1000):
     policy.update(obs, action, reward)
     obs = next_obs
 ```
+
+### One policy on data, as a scikit-learn estimator
+
+`fit`, `partial_fit` and `predict` work on plain arrays, with no environment.
+`X` holds the played actions and `y` their rewards:
+
+| Problem | `X` in `fit` / `partial_fit` | `predict` returns |
+| --- | --- | --- |
+| MAB | arm indices, shape (n_samples,) | `predict()`: an arm |
+| Linear | features of the played actions, shape (n_samples, n_features), or their row indices in `action_features` | `predict(A)`: a row of the candidate actions A (default: `action_features`) |
+| Multi-user linear | same, with `users=` | `predict(A, user=u)` |
+
+```python
+model = bk.LinUCB(alpha=1.0, lambda_=1.0)
+model.fit(X, y)                        # X: (n_samples, n_features), y: (n_samples,)
+action = model.predict(A)              # A: (n_candidates, n_features) -> row index
+model.partial_fit(A[[action]], [reward])   # learn from one more sample
+
+arm = bk.UCB1().fit(arms, rewards).predict()        # MAB: arms are indices
+bk.CLUB().fit(X, y, users=user_ids).predict(A, user=3)
+```
+
+`fit` forgets what was learned, `partial_fit` adds to it; both return the policy.
+`X` can be empty for a cold start (`n_actions=` for a MAB). `fit` also takes
+`action_features` (candidate actions; arm buckets need them), `n_actions`, `n_users`,
+`horizon`, `weights` and `seed`. Without an environment, the noise level R, the norm S
+and the reward range b are unknown: `fit` warns (`bk.ParameterWarning`) about assumed
+and arbitrary values; give them to the constructor (`subgaussian`, `theta_bound`,
+`reward_range`). `get_params`, `set_params` and `sklearn.base.clone` work as for any
+scikit-learn estimator.
 
 ## Policies
 
