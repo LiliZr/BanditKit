@@ -82,6 +82,34 @@ projection, `projection="gaussian"` or `"fjlt"`), `n_buckets` (arm buckets), `us
 
 `help(bk.LinUCB)` lists every parameter with its type, range, default and meaning.
 
+## Hyperparameters: theoretical values or a search
+
+Two ways to set them, announced when an experiment starts (`verbose=1`, the default).
+
+**Theoretical values (default).** With `alpha=1`, every policy uses the confidence
+bound of its paper. Constants of these bounds come from the environment when it knows
+them: noise level R, norm S of theta, reward range b. Values with no theoretical
+justification are reported as arbitrary: `lambda_=0.1` (any lambda > 0 keeps the bounds
+valid), `epsilon`, `tau`. Values the theory needs but the environment does not give are
+reported as assumed (R = 1, b = 1). `policy.parameter_notes()` lists them for one policy.
+
+**Search of the best values (slower).** `param_grid` tries every combination on the
+problem and keeps the best one per policy (lowest final regret by default):
+
+```python
+bk.Experiment(env, policies, horizon=5000, n_runs=20, param_grid=True)  # alpha 1e-4..100, lambda_ 1e-5..1
+bk.Experiment(env, policies, horizon=5000, n_runs=20,
+              param_grid={"alpha": np.logspace(-4, 2, 7), "lambda_": [0.01]})  # lambda_ fixed for everyone
+bk.Experiment(env, {"LinUCB": bk.LinUCB(), "LinTS": bk.LinTS()}, horizon=5000, n_runs=20,
+              param_grid={"LinUCB": {"alpha": [0.1, 1.0]}})                   # one grid per policy
+```
+
+Each combination runs `search_runs` times (default 3) per instance, on other seeds
+than the reported runs; the best one is then run `n_runs` times. `results.best_params`
+and `results.search_table()` give the outcome, `plot.search_landscape` draws it, and the
+legend of `plot.curves` becomes a table of the best values. A searched value fits this
+problem only: report it as such.
+
 ## Experiments and results
 
 `Experiment(env, policies, horizon, n_runs, weights, seed, n_jobs, log_interval,
@@ -217,3 +245,9 @@ with your own pipeline and pass it to `GroupRecommendationMAB`.
 * Gentile, Li, Zappella. Online clustering of bandits. ICML 2014 (CLUB).
 * Li, Chen, Li, Leung. Improved algorithm on online clustering of bandits. IJCAI 2019 (SCLUB).
 * Dolan, Moré. Benchmarking optimization software with performance profiles. Mathematical Programming, 2002.
+
+## Tests
+
+```bash
+pytest
+```
