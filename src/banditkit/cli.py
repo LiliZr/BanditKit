@@ -1,6 +1,7 @@
 """Command line: run an experiment from a configuration file, build the dashboard.
 
     banditkit run configs/linear.json --generate-dashboard
+    banditkit run results/*/config.json         # rerun every experiment of results/
     banditkit dashboard                         # every folder of results/
     banditkit dashboard results/linear results/my-run --out my-dashboard.html
 
@@ -96,9 +97,11 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="banditkit", description="Run bandit experiments and view their results.")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    run = sub.add_parser("run", help="Run the experiment of a JSON configuration and save a results folder.")
-    run.add_argument("config", type=Path, help="JSON configuration (a results folder's config.json works too).")
-    run.add_argument("--name", help="Name of the results folder (default: name of the configuration file).")
+    run = sub.add_parser("run", help="Run the experiments of JSON configurations and save results folders.")
+    run.add_argument("configs", nargs="+", type=Path, metavar="config",
+                     help="JSON configurations (a results folder's config.json works too).")
+    run.add_argument("--name", help="Name of the results folder (default: name of the configuration file; "
+                                    "one configuration only).")
     run.add_argument("--results-dir", type=Path, default=Path("results"), help="Parent of the results folders.")
     run.add_argument("--horizon", type=int, help="Override the horizon.")
     run.add_argument("--n-runs", type=int, help="Override the number of runs per instance.")
@@ -120,13 +123,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     from .report import build_dashboard
 
     if args.command == "run":
-        config = json.loads(args.config.read_text())
-        name = args.name or (args.config.parent.name if args.config.name == "config.json" else args.config.stem)
-        folder = args.results_dir / name
+        if args.name and len(args.configs) > 1:
+            raise SystemExit("--name works with one configuration only.")
         overrides = {k: v for k, v in (("horizon", args.horizon), ("n_runs", args.n_runs)) if v is not None}
-        command = f"python -m banditkit run {folder.as_posix()}/config.json"
-        run_config(config, folder, n_jobs=args.n_jobs, overrides=overrides, command=command)
-        print(f"Results saved in {folder}/")
+        for path in args.configs:
+            config = json.loads(path.read_text())
+            name = args.name or (path.parent.name if path.name == "config.json" else path.stem)
+            folder = args.results_dir / name
+            command = f"python -m banditkit run {folder.as_posix()}/config.json"
+            run_config(config, folder, n_jobs=args.n_jobs, overrides=overrides, command=command)
+            print(f"Results saved in {folder}/")
         if args.generate_dashboard:
             out = build_dashboard(results_dir=args.results_dir, out=args.dashboard)
             print(f"Dashboard: {out}")

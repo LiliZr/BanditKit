@@ -84,3 +84,18 @@ def test_linear_env_from_means():
     np.testing.assert_allclose(env.mean_rewards(obs)[:, 0], [0.2, 0.9, 0.4])
     res = bk.Experiment(env, [bk.LinUCB()], horizon=50, seed=0, verbose=0).run()
     assert np.isfinite(res.final()["LinUCB"]).all()
+
+
+def test_run_several_configs(tmp_path):
+    for name in ("one", "two"):
+        (tmp_path / f"{name}.json").write_text(json.dumps(CONFIG))
+    args = ["run", str(tmp_path / "one.json"), str(tmp_path / "two.json"), "--results-dir", str(tmp_path / "res"),
+            "--horizon", "50"]
+    assert cli.main(args) == 0
+    assert sorted(p.name for p in (tmp_path / "res").iterdir()) == ["one", "two"]
+    # Rerun what results/ holds: each folder keeps its name.
+    assert cli.main(["run", *map(str, sorted((tmp_path / "res").glob("*/config.json"))), "--results-dir",
+                     str(tmp_path / "res"), "--horizon", "50"]) == 0
+    assert sorted(p.name for p in (tmp_path / "res").iterdir()) == ["one", "two"]
+    with pytest.raises(SystemExit):
+        cli.main([*args, "--name", "x"])

@@ -7,6 +7,14 @@ experiments, publication figures and explanatory figures.
 It shows the experiments stored in [`results/`](results), with no install and no server.
 See [Results and dashboard](#results-and-dashboard) to run new ones.
 
+> [!WARNING]
+> **You are using default parameters unless you set them.**
+> The defaults are the values of the papers (`alpha=1`: theoretical confidence bounds).
+> They are safe in theory but often explore too much in practice.
+> If you want values fitted to your problem, run a grid search (`param_grid=True`)
+> or set the parameters you want (`bk.LinUCB(alpha=0.1)`).
+> An experiment prints the same warning when it starts with default values.
+
 * **Any numerical data**: environments take plain NumPy arrays (mean rewards, action
   features, user parameters...). Bring your own data and your own preprocessing; see
   [Your own data](#your-own-data).
@@ -33,34 +41,36 @@ Python 3.10 or later. Only numpy is required; the extras add analysis, figures a
 
 ## Results and dashboard
 
-Every experiment of the repository is a folder of [`results/`](results), produced by a
-JSON configuration of [`configs/`](configs) with fixed seeds:
+**Where the results come from.** Each folder of [`results/`](results) is the output of one
+configuration of [`configs/`](configs), with the same name. The data are synthetic: the
+problems are drawn from a fixed seed, so nothing is downloaded and a rerun gives the same
+results (up to floating-point differences between machines).
 
-| Folder | Problem |
-| --- | --- |
-| `mab-bernoulli` | 10 Bernoulli MABs with 10 arms; UCB family, KL-UCB, Thompson Sampling |
-| `linear-synthetic` | 10 linear bandits (1000 actions in R^20); LinUCB and its efficient variants, SOFUL, CBSCFD, LinTS |
-| `linear-search` | theoretical hyperparameters against the best ones found by a search |
-| `multi-user-synthetic` | 100 users in 5 clusters, 20 actions offered per step; LinUCB, CLUB, SCLUB |
-| `pareto-two-objectives` | two-objective MAB with a concave Pareto front; Pareto UCB1 |
-| `steam-bigdata2025` | real data: Steam instances of Izri et al. (BigData 2025), 1807 features |
+| Folder | Problem (synthetic) | Policies |
+| --- | --- | --- |
+| `mab-bernoulli` | 10 Bernoulli MABs, 10 arms | UCB family, KL-UCB, Thompson Sampling, Random |
+| `linear-synthetic` | 10 linear bandits, 1000 actions in R^20 | LinUCB and its efficient variants, SOFUL, CBSCFD, LinTS |
+| `linear-search` | 5 linear bandits, 200 actions in R^10 | LinUCB, LinTS: defaults against values found by a grid search |
+| `multi-user-synthetic` | 100 users in 5 clusters, 20 actions offered per step | LinUCB (shared, per user), CLUB, SCLUB |
+| `pareto-two-objectives` | two-objective MAB, concave Pareto front | Pareto UCB1, UCB1, Random |
 
-A folder holds `config.json` (what was run), `results.npz` (every run, `bk.Results.load`)
-and `summary.json` (what the dashboard draws). Rerun, add or compare experiments:
+**How to run.** From the root of the repository (`pip install -e .` once):
 
 ```bash
-python -m banditkit run configs/linear-synthetic.json --generate-dashboard   # run, then rebuild dashboard.html
-python -m banditkit run results/mab-bernoulli/config.json --name mab-50-runs --n-runs 5
-python -m banditkit dashboard                                  # dashboard.html from every folder of results/
-python -m banditkit dashboard results/mab-bernoulli results/mab-50-runs --out mab.html   # chosen folders only
+python -m banditkit run configs/mab-bernoulli.json                  # one experiment -> results/mab-bernoulli/
+python -m banditkit run results/*/config.json --generate-dashboard  # rerun everything, rebuild dashboard.html
+python -m banditkit run configs/mab-bernoulli.json --name mab-50-runs --n-runs 50   # a variant, new folder
+python -m banditkit dashboard results/mab-bernoulli results/mab-50-runs --out mab.html   # chosen folders
 ```
 
-`pip install -e .` also installs the `banditkit` command (`banditkit run ...`). In the
-dashboard, the list on the left switches between folders. **Open a results folder…**
-adds folders from disk (one folder, or a whole `results/` folder) without rebuilding
-anything. Charts load plotly.js from a CDN; `banditkit dashboard --offline` embeds it.
+`--n-jobs 4` runs in parallel; `--horizon` and `--n-runs` override the configuration.
+A folder holds `config.json` (what was run), `results.npz` (every run, `bk.Results.load`)
+and `summary.json` (what the dashboard draws). In the dashboard, the list on the left
+switches between folders. **Open a results folder…** adds folders from disk without
+rebuilding anything. Charts load plotly.js from a CDN; `dashboard --offline` embeds it.
 
-A configuration names the environment, the policies and the settings of `bk.Experiment`:
+A configuration names the environment, the policies and the settings of `bk.Experiment`
+(`"param_grid": true` in `experiment` runs a grid search):
 
 ```json
 {
@@ -166,6 +176,18 @@ projection, `projection="gaussian"` or `"fjlt"`), `n_buckets` (arm buckets), `us
 ## Hyperparameters: theoretical values or a search
 
 Two ways to set them, announced when an experiment starts (`verbose=1`, the default).
+When a policy keeps a default value, the run starts with a warning (a yellow band in a
+terminal or a notebook; `NO_COLOR=1` turns colors off):
+
+```text
+ WARNING: you are using default parameters
+Defaults are the values of the papers (alpha=1: theoretical confidence bounds).
+They are safe in theory but often explore too much in practice.
+Note: if you want values fitted to your problem, run a grid search (param_grid=True, or
+"param_grid": true in the "experiment" part of a config file), or set the parameters you want,
+e.g. LinUCB(alpha=0.1).
+  LinUCB: default alpha=1; lambda_=0.1 (any lambda > 0 keeps the bound valid) [arbitrary]; R=0.1, S=1 from the environment
+```
 
 **Theoretical values (default).** With `alpha=1`, every policy uses the confidence
 bound of its paper. Constants of these bounds come from the environment when it knows
@@ -310,21 +332,42 @@ to Steam (a recommended game is 1); these papers use MovieLens and Yelp, not Ste
 ### High-dimensional single-user instances (Izri, Groz and Maniu, BigData 2025)
 
 `datasets.steam_single_user(seed)`, `datasets.movielens_single_user(seed)` and
-`datasets.bigdata2025_instances("steam", n_instances)` build the instances of the paper
-from its processed data, downloaded once from
-[Stochastic-linear-bandits](https://github.com/LiliZr/Stochastic-linear-bandits). One user,
-drawn with the seed, per instance:
+`datasets.bigdata2025_instances("steam", n_instances)` rebuild the instances of the paper
+from the raw public files, with the processing of the paper's notebooks. One user, drawn
+with the seed as in the paper, per instance:
 
-* Steam: 2000 games with 1807 features (metadata, rating class, one-hot tags). The user's
-  parameter is the least-squares fit of "recommended" on the games they reviewed; mean
-  rewards are min-max normalized over the catalog; noise 0.1.
-* MovieLens: the movies the user rated, with their year, genres, rating statistics and
-  the users who rated them (one-hot); the mean reward is the rating / 5.
+* Steam ([Kaggle](https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam),
+  account needed): users with at least 200 reviews; 2000 games described by their
+  metadata, rating class, tags and reviewers (one-hot). The user's parameter is the
+  least-squares fit of "recommended" on the games they reviewed. Mean rewards are
+  min-max normalized over the catalog; noise 0.1.
+* MovieLens 25M (downloaded once): users with 1500 to 3000 ratings; the movies the user
+  rated, with their year, genres, rating statistics and the users who rated them
+  (one-hot). The mean reward is the rating / 5.
 
-`paper_code=True` rebuilds the Steam instances exactly as the repository code does. That
-code keeps the CSV index column as a feature (about 90% of the squared norm of a game
-vector) and pairs the reviewed games, in catalog order, with labels in review order. The
-default drops the index column and aligns each game with its own label.
+```bash
+kaggle datasets download -d antonkozyriev/game-recommendations-on-steam -p ~/banditkit_data
+python -m banditkit run configs/bigdata2025-steam.json configs/bigdata2025-steam-paper-code.json \
+    configs/bigdata2025-movielens.json --generate-dashboard
+```
+
+The configurations follow the paper's protocol: 20 users (seeds 0 to 19), horizon 500,
+noise 0.1, delta = 1/T, the paper's hyperparameters for each dataset. The paper's code
+uses log10 in its confidence radii, banditkit the natural log of the theory: for the same
+`alpha`, the radius here is up to about 1.5 times wider. The processed tables are cached in
+`~/banditkit_data/bigdata2025`. These results are not in `results/`, since the Steam data
+need a Kaggle account.
+
+Two errors of the paper's Steam code are fixed by default; `paper_code=True` keeps them:
+
+1. the code writes the game vectors to a CSV file and reads them back with the row
+   numbers as a feature (values up to about 500,000, most of the norm of every vector);
+2. it pairs the games a user reviewed, in catalog order, with labels in review order.
+
+On test files in the Kaggle and MovieLens formats, `paper_code=True` gives the same
+users, actions and parameters as the paper's code run with pandas 2.0. Recent pandas
+(2.2 and later) orders merged rows differently: run today, the paper's notebooks draw
+other users for the same seeds; banditkit keeps the order of the paper.
 
 ### Real rewards for classical MABs
 
