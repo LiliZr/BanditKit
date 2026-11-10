@@ -165,6 +165,16 @@ def test_instances_and_compare():
         assert all(np.diff(np.sort(e.mean_rewards(e.reset(seed=0)[0])[:, 0]))[-1] >= 0.1 for e in mabs)
     with pytest.raises(ValueError, match="same kind"):
         bk.Experiment([envs[0], bk.make_env(means=[0.1, 0.2])], [bk.Random()], horizon=10)
+    with pytest.raises(ValueError, match="n_actions for MABs"):
+        bk.Experiment([bk.make_env(means=[0.1, 0.2, 0.3]), bk.make_env(means=[0.1, 0.2])], [bk.Random()], horizon=10)
+    # Linear instances may offer different numbers of actions (e.g. the movies each user rated).
+    X = np.random.default_rng(0).normal(size=(30, 4))
+    uneven = [bk.make_env(action_features=X[:k], theta=np.ones(4) / 2, noise_std=0.1) for k in (30, 20)]
+    res = bk.Experiment(uneven, [bk.LinUCB()], horizon=50, seed=0, verbose=0).run()
+    assert res.arrays["LinUCB"]["action_counts"].shape == (2, 30)  # padded with zeros
+    assert res.arrays["LinUCB"]["action_counts"][1, 20:].sum() == 0 and res.meta["n_actions_range"] == [20, 30]
+    with pytest.raises(ValueError, match="same number of actions"):
+        bk.Experiment(uneven, [bk.LinUCB()], horizon=10, track=["estimates"])
 
 
 def test_param_search_picks_the_best_combination():
@@ -191,3 +201,24 @@ def test_parameter_notes():
     q = bk.MABEpsilonGreedy()
     q.reset(bk.make_env(means=[0.1, 0.2]).spec, seed=0)
     assert ("arbitrary" in dict(q.parameter_notes())) and any("epsilon" in t for _, t in q.parameter_notes())
+
+
+def test_default_parameters_warning(capsys, monkeypatch):
+    from banditkit.experiment import DEFAULTS_WARNING
+
+    env = bk.make_env(means=[0.2, 0.5, 0.7], noise_std=0.1)
+    monkeypatch.setenv("NO_COLOR", "1")
+    bk.Experiment(env, [bk.UCB1(), bk.Random()], horizon=5, seed=0).run()
+    err = capsys.readouterr().err
+    assert DEFAULTS_WARNING in err and "param_grid=True" in err and "UCB1: default alpha=1" in err
+    assert "\033[" not in err  # NO_COLOR: two rules instead of a colored band
+    bk.Experiment(env, [bk.UCB1(alpha=0.2), bk.Random()], horizon=5, seed=0).run()
+    assert DEFAULTS_WARNING not in capsys.readouterr().err  # nothing left at its default
+    bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0, param_grid={"alpha": [0.1, 1.0]}, search_runs=1).run()
+    assert DEFAULTS_WARNING not in capsys.readouterr().err  # values searched
+    monkeypatch.delenv("NO_COLOR")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0).run()
+    assert "\033[1;30;103m WARNING" in capsys.readouterr().err
+    bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0, verbose=0).run()
+    assert capsys.readouterr().err == ""

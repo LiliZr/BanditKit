@@ -62,8 +62,8 @@ class Experiment:
     ----------
     env : Environment or list of Environment
         The problem. A list gives several instances of the same kind of problem
-        (same family, number of actions, features and objectives), for example
-        drawn with :func:`banditkit.sample_instances`. Each instance gets ``n_runs``
+        (same family, number of features and objectives; same number of actions for
+        a MAB), for example drawn with :func:`banditkit.sample_instances`. Each instance gets ``n_runs``
         runs and the results pool them: averages are over instances and runs.
     policies : Policy, list of Policy, or dict {label: Policy}
         Policies to compare. Each run uses a fresh copy (``policy.clone()``).
@@ -147,6 +147,8 @@ class Experiment:
         for name in ("pareto_regret", "pareto_share", "unfairness"):
             if name in self.track and self.env.spec.reward_dim < 2:
                 raise ValueError(f"`{name}` needs a multi-objective environment (reward_dim > 1).")
+        if "estimates" in self.track and len({e.spec.n_actions for e in self.envs}) > 1:
+            raise ValueError("`estimates` (one value per action) needs instances with the same number of actions.")
         self.measure_memory = check_bool("measure_memory", measure_memory)
         self.search_runs = check_int("search_runs", search_runs, low=1)
         self.search_metric = search_metric
@@ -181,10 +183,13 @@ class Experiment:
         ref = envs[0].spec
         for i, e in enumerate(envs[1:], start=1):
             s = e.spec
-            if (s.family, s.n_actions, s.n_features, s.reward_dim) != (ref.family, ref.n_actions, ref.n_features,
-                                                                         ref.reward_dim):
-                raise ValueError(f"Instance {i} is not the same kind of problem as instance 0: family, n_actions, "
-                                 f"n_features and reward_dim must match ({s} vs {ref}).")
+            # Linear instances may offer different numbers of actions (the actions come with the
+            # observation), e.g. the movies each user rated; MAB instances may not.
+            same_actions = s.n_actions == ref.n_actions or ref.family != "mab"
+            if (s.family, s.n_features, s.reward_dim) != (ref.family, ref.n_features, ref.reward_dim) \
+                    or not same_actions:
+                raise ValueError(f"Instance {i} is not the same kind of problem as instance 0: family, n_features "
+                                 f"and reward_dim must match, and n_actions for MABs ({s} vs {ref}).")
         return envs
 
     def _label_policies(self, policies: Any) -> Dict[str, Policy]:
@@ -372,16 +377,33 @@ class Experiment:
         return policies, search
 
     # -------------------------------------------------------------- messages
+    def _defaults_in_use(self) -> Dict[str, Tuple[str, Dict[str, Any]]]:
+        """Tunable hyperparameters left at their default: {label: (class name, {param: value})}."""
+        out = {}
+        for label, policy in self.policies.items():
+            specs, params = policy._all_params(), policy.get_params()
+            left = {k: params[k] for k in policy.default_search_params if k in specs and params[k] == specs[k].default}
+            if left:
+                out[label] = (type(policy).__name__, left)
+        return out
+
     def _say_plan(self) -> None:
         where = f" on {self.n_instances} instances" if self.n_instances > 1 else ""
         runs = f"{self.n_runs} run" + ("s" if self.n_runs > 1 else "")
         _say(f"banditkit: {len(self.policies)} policies, {runs}{where}, horizon {self.horizon}.")
         if not self._grids:
-            _say("Hyperparameters as given: defaults give the theoretical confidence bounds (alpha=1). "
-                 "Use param_grid=True to search the best values for this problem instead (slower).")
+            defaults = self._defaults_in_use()
+            if defaults:
+                _warn_defaults(defaults)
+            else:
+                _say("Hyperparameters as given.")
             for label, notes in self._notes.items():
-                # Arbitrary or assumed values first (they deserve attention), then values read from the problem.
-                parts = [f"{text} [{kind}]" for kind, text in notes if kind != "from_problem"]
+                # Defaults, arbitrary or assumed values first (they deserve attention), then values read
+                # from the problem.
+                noted = {text.split("=", 1)[0] for kind, text in notes if kind == "arbitrary"}
+                left = {k: v for k, v in defaults.get(label, ("", {}))[1].items() if k not in noted}
+                parts = [f"default {', '.join(f'{k}={_fmt(v)}' for k, v in left.items())}"] if left else []
+                parts += [f"{text} [{kind}]" for kind, text in notes if kind != "from_problem"]
                 known = [text.split(": ", 1)[-1] for kind, text in notes if kind == "from_problem"]
                 if known:
                     parts.append(", ".join(known) + " from the environment")
@@ -409,7 +431,7 @@ class Experiment:
         for label, policy in policies.items():
             runs = [outputs[(label, i, r)] for i, r in keys]
             curves[label] = {k: np.stack([o[k] for o in runs]) for k in runs[0] if not k.startswith("_")}
-            arrays[label] = {k[1:]: np.stack([o[k] for o in runs]) for k in runs[0] if k.startswith("_")}
+            arrays[label] = {k[1:]: _stack_padded([o[k] for o in runs]) for k in runs[0] if k.startswith("_")}
             arrays[label]["instance"] = np.array([i for i, _ in keys], dtype=np.int64)
             probe = policy.clone()
             probe.reset(self.spec, self.weights, seed=0)
@@ -422,6 +444,7 @@ class Experiment:
             "spec": {k: getattr(self.spec, k) for k in ("n_actions", "n_features", "reward_dim", "n_users", "horizon",
                                                         "reward_range", "feature_norm", "noise_std", "theta_norm")},
             "family": self.spec.family,
+            "n_actions_range": [min(s.n_actions for s in self.specs), max(s.n_actions for s in self.specs)],
             "horizon": self.horizon,
             "n_runs": self.n_runs,
             "weights": self.weights.tolist(),
@@ -472,8 +495,60 @@ class Experiment:
         os.replace(tmp, path)  # atomic: a crash never leaves a half-written checkpoint
 
 
+def _stack_padded(arrays: List[np.ndarray]) -> np.ndarray:
+    """Stack per-run arrays; 1-D arrays of different lengths (action counts of instances with
+    different numbers of actions) are padded with zeros."""
+    if len({np.shape(a) for a in arrays}) <= 1:
+        return np.stack(arrays)
+    if any(np.ndim(a) != 1 for a in arrays):
+        raise ValueError("Per-run arrays of different shapes cannot be stacked.")
+    out = np.zeros((len(arrays), max(len(a) for a in arrays)), dtype=np.result_type(*arrays))
+    for i, a in enumerate(arrays):
+        out[i, :len(a)] = a
+    return out
+
+
 def _say(message: str) -> None:
     print(message, file=sys.stderr, flush=True)
+
+
+#: Title of the banner printed when policies run with their default hyperparameters.
+DEFAULTS_WARNING = "WARNING: you are using default parameters"
+_EXAMPLE_VALUES = {"alpha": 0.1, "lambda_": 0.01, "c": 0.0, "epsilon": 0.05, "tau": 0.1}
+
+
+def _use_color(stream: Any) -> bool:
+    """ANSI colors: in a terminal or a notebook, unless NO_COLOR is set (FORCE_COLOR forces them)."""
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    if "ipykernel" in sys.modules:
+        return True
+    return bool(getattr(stream, "isatty", lambda: False)()) and os.environ.get("TERM") != "dumb"
+
+
+def _banner(text: str, stream: Any = None) -> str:
+    """``text`` on a yellow band (or between two rules when colors are off)."""
+    import shutil
+
+    width = max(len(text) + 2, min(shutil.get_terminal_size((80, 24)).columns, 100))
+    if _use_color(stream if stream is not None else sys.stderr):
+        return f"\033[1;30;103m{(' ' + text).ljust(width)}\033[0m"
+    return f"{'=' * width}\n {text}\n{'=' * width}"
+
+
+def _warn_defaults(defaults: Dict[str, Tuple[str, Dict[str, Any]]]) -> None:
+    """Banner and note when policies run with their default (paper) hyperparameters."""
+    cls, params = next(iter(defaults.values()))
+    key = next(iter(params))
+    example = f"{cls}({key}={_fmt(_EXAMPLE_VALUES.get(key, params[key]))})"
+    _say(_banner(DEFAULTS_WARNING))
+    _say("Defaults are the values of the papers (alpha=1: theoretical confidence bounds).\n"
+         "They are safe in theory but often explore too much in practice.\n"
+         "Note: if you want values fitted to your problem, run a grid search (param_grid=True, or\n"
+         "\"param_grid\": true in the \"experiment\" part of a config file), or set the parameters you want,\n"
+         f"e.g. {example}.")
 
 
 def _fmt(value: Any) -> str:

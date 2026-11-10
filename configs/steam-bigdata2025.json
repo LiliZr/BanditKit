@@ -1,9 +1,0 @@
-{
-  "description": "Real data: Steam instances of Izri, Groz and Maniu (IEEE BigData 2025), one user per instance, 2000 games with 1807 features. 5 users, 2 runs each, horizon 500 as in the paper. Data downloaded once from github.com/LiliZr/Stochastic-linear-bandits.",
-  "env": {"kind": "dataset", "function": "bigdata2025_instances", "name": "steam", "n_instances": 5},
-  "policies": [
-    {"policy": "LinUCB", "n_components": 50}, {"policy": "CBRAP", "n_components": 50},
-    {"policy": "SOFUL", "sketch_size": 50}, {"policy": "CBSCFD", "sketch_size": 50}, {"policy": "Random"}
-  ],
-  "experiment": {"horizon": 500, "n_runs": 2, "seed": 0, "log_interval": 5}
-}

@@ -125,7 +125,9 @@ def summarize(results: Results, name: str, description: str = "", command: Optio
         "banditkit_version": meta.get("banditkit_version", __version__),
         "problem": {"family": meta.get("family"), "horizon": meta.get("horizon"), "n_runs": results.n_runs,
                     "n_instances": meta.get("n_instances", 1), "seed": meta.get("seed"),
-                    **{k: spec.get(k) for k in ("n_actions", "n_features", "reward_dim", "n_users")}},
+                    **{k: spec.get(k) for k in ("n_actions", "n_features", "reward_dim", "n_users")},
+                    **({"n_actions": "{} to {}".format(*meta["n_actions_range"])}
+                       if meta.get("n_actions_range") and len(set(meta["n_actions_range"])) > 1 else {})},
         "policies": policies,
         "steps": _round(steps[keep]),
         "metric_titles": {m: METRIC_TITLES[m] for m in metrics},
