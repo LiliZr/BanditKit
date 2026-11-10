@@ -45,6 +45,20 @@ def _download_and_extract(url: str, folder: str, data_home: Path) -> Path:
     return data_home / folder
 
 
+def _movielens_root(variant: str, data_home: Union[str, Path, None], download_if_missing: bool = True) -> Path:
+    """Folder of the extracted files of a MovieLens variant (downloaded on first use)."""
+    if variant not in MOVIELENS_VARIANTS:
+        raise ValueError(f"Unknown MovieLens variant {variant!r}; choose among {sorted(MOVIELENS_VARIANTS)}.")
+    url, folder = MOVIELENS_VARIANTS[variant]
+    home = get_data_home(data_home)
+    root = home / folder
+    if not root.exists():
+        if not download_if_missing:
+            raise FileNotFoundError(f"{root} not found and download_if_missing=False.")
+        root = _download_and_extract(url, folder, home)
+    return root
+
+
 def fetch_movielens(variant: str = "small", data_home: Union[str, Path, None] = None,
                     download_if_missing: bool = True):
     """Ratings and movies of a MovieLens variant, downloaded on first use.
@@ -68,16 +82,7 @@ def fetch_movielens(variant: str = "small", data_home: Union[str, Path, None] = 
     """
     import pandas as pd
 
-    if variant not in MOVIELENS_VARIANTS:
-        raise ValueError(f"Unknown MovieLens variant {variant!r}; choose among {sorted(MOVIELENS_VARIANTS)}.")
-    url, folder = MOVIELENS_VARIANTS[variant]
-    home = get_data_home(data_home)
-    root = home / folder
-    if not root.exists():
-        if not download_if_missing:
-            raise FileNotFoundError(f"{root} not found and download_if_missing=False.")
-        root = _download_and_extract(url, folder, home)
-
+    root = _movielens_root(variant, data_home, download_if_missing)
     if (root / "ratings.csv").exists():
         ratings = pd.read_csv(root / "ratings.csv").rename(columns={"userId": "user_id", "movieId": "item_id"})
         movies = pd.read_csv(root / "movies.csv").rename(columns={"movieId": "item_id"})

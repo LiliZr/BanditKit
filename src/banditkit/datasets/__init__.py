@@ -12,13 +12,14 @@ preprocessing works, as long as its output has the input types of the environmen
 * :func:`movielens_mab`: classical MAB whose rewards are real ratings (Gupta et al., IEEE TIT 2021);
   :func:`rewards_to_mab` does the same on any data.
 * :func:`steam_single_user`, :func:`movielens_single_user`, :func:`bigdata2025_instances`: the
-  high-dimensional single-user instances of Izri, Groz and Maniu (IEEE BigData 2025), from the paper's repository.
+  high-dimensional single-user instances of Izri, Groz and Maniu (IEEE BigData 2025), rebuilt from the
+  raw Kaggle Steam and MovieLens 25M files.
 * :func:`load_npz`: environment from an .npz file written by any preprocessing (keys in :mod:`banditkit.datasets.base`).
 
 Needs pandas and scipy (``pip install banditkit[datasets]``).
 """
-from .bigdata2025 import (BIGDATA2025_URL, bigdata2025_instances, fetch_bigdata2025, movielens_single_user,
-                          steam_single_user)
+from .bigdata2025 import (STEAM_KAGGLE_URL, bigdata2025_instances, load_movielens_tables, load_steam_tables,
+                          movielens_single_user, steam_single_user)
 from .base import LinearDataset, filter_min_counts, load_npz, ratings_to_linear
 from .movielens import MOVIELENS_VARIANTS, fetch_movielens, get_data_home, movielens_linear
 from .real_mab import movielens_mab, rewards_to_mab
@@ -27,4 +28,5 @@ from .steam import load_steam, steam_linear
 __all__ = ["LinearDataset", "load_npz", "ratings_to_linear", "filter_min_counts",
            "fetch_movielens", "movielens_linear", "MOVIELENS_VARIANTS", "get_data_home",
            "load_steam", "steam_linear", "rewards_to_mab", "movielens_mab",
-           "fetch_bigdata2025", "steam_single_user", "movielens_single_user", "bigdata2025_instances", "BIGDATA2025_URL"]
+           "steam_single_user", "movielens_single_user", "bigdata2025_instances", "load_steam_tables",
+           "load_movielens_tables", "STEAM_KAGGLE_URL"]
