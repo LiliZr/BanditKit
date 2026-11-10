@@ -296,11 +296,15 @@ class LinUCB(BucketedPolicy):
 
 
 class CBRAP(LinUCB):
-    """CBRAP (Yu, King and Lyu, 2017): LinUCB after a Gaussian random projection.
+    """CBRAP (Yu, Lyu and King, AAAI 2017): LinUCB after a Gaussian random projection.
 
-    Projection entries are N(0, 1/m) with m = ``n_components`` (required). Radius::
+    Projection entries are N(0, 1/m) with m = ``n_components`` (required). Radius of
+    Lemma 1 of the AAAI paper, where the noise plus the projection error is
+    (sqrt(4/m) + R)-sub-Gaussian::
 
         beta(n) = (sqrt(4 / m) + R) sqrt(m ln((1 + n L^2 / lambda) / delta)) + sqrt(lambda) S
+
+    A later erratum by the first author (arXiv:1903.08600) revises this analysis.
     """
 
     base_name = "CBRAP"
@@ -337,6 +341,9 @@ class ConfidenceBall1(SingleModelPolicy):
 
     The confidence set is an L1 ball in the V^1/2 geometry, of radius sqrt(k) beta(n).
     Its UCB on x is ``x . theta + alpha * sqrt(k) * beta(n) * ||V^-1/2 x||_inf``.
+    beta(n) is the OFUL radius (Abbasi-Yadkori et al., 2011), as in the thesis code,
+    not the radius of Dani et al.: the L1 ball of radius sqrt(k) beta(n) contains
+    the OFUL ellipsoid, so the confidence level is kept.
     """
 
     base_name = "ConfidenceBall1"
@@ -351,13 +358,19 @@ class ConfidenceBall1(SingleModelPolicy):
 
 
 class LinTS(SingleModelPolicy):
-    """Linear Thompson Sampling (Agrawal and Goyal, 2013), named as in MABWiser.
+    """Linear Thompson Sampling (Agrawal and Goyal, ICML 2013), named as in MABWiser.
 
-    Samples ``theta ~ N(theta_hat, (alpha R)^2 V^-1)`` and plays the best action for
-    the sample. The paper's theoretical scale is larger (R sqrt(24 k ln(1/delta) / eps)).
+    Samples ``theta ~ N(theta_hat, (alpha v_t)^2 V^-1)`` and plays the best action
+    for the sample, with ``v_t = R sqrt(9 k ln(t / delta))`` at round t (1-based):
+    the scale of the final arXiv version (1209.3352), for an unknown horizon. The
+    paper assumes features and theta of norm at most 1, and lambda = 1.
     """
 
     base_name = "LinTS"
+
+    def _scale(self) -> float:
+        t = self.model.n_obs + 1
+        return self._R * math.sqrt(9.0 * self.dim * math.log(t / self.delta))
 
     def _predict(self, obs: Observation) -> int:
         X = self._working_features(obs)
@@ -366,7 +379,7 @@ class LinTS(SingleModelPolicy):
         except np.linalg.LinAlgError:  # V_inv numerically not positive definite (float32)
             eigval, eigvec = np.linalg.eigh(self.model.V_inv)
             factor = eigvec * np.sqrt(np.clip(eigval, 0.0, None))
-        sample = self.model.theta + self.alpha * self._R * (factor @ self.rng.standard_normal(self.dim))
+        sample = self.model.theta + self.alpha * self._scale() * (factor @ self.rng.standard_normal(self.dim))
         return argmax_random(X @ sample, self.rng)
 
 

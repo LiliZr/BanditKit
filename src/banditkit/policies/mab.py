@@ -72,7 +72,12 @@ class MABPolicy(Policy):
         return int(candidates[self.rng.integers(candidates.size)])
 
     def _log_t(self) -> float:
+        """ln of the number of plays so far (n in UCB1, Auer et al., 2002)."""
         return math.log(max(self.t, 1))
+
+    def _log_round(self) -> float:
+        """ln of the current round, 1-based (t in UCB-V, Audibert et al., 2009)."""
+        return math.log(self.t + 1)
 
     def diagnostics(self) -> Dict[str, Any]:
         d = {"mean": self.means.copy()}
@@ -95,7 +100,7 @@ class Random(MABPolicy):
 class EpsilonGreedy(MABPolicy):
     """Greedy on the empirical means, uniform exploration with probability epsilon.
 
-    ``schedule="auer"`` uses ``epsilon_t = min(1, c K / (d^2 t))`` (Auer et al., 2002).
+    ``schedule="auer"`` uses ``epsilon_n = min(1, c K / (d^2 n))`` at round n (Auer et al., 2002).
     """
 
     base_name = "EpsilonGreedy"
@@ -126,7 +131,7 @@ class EpsilonGreedy(MABPolicy):
         if self.schedule == "constant":
             epsilon = self.epsilon
         else:
-            epsilon = min(1.0, self.c * self.spec.n_actions / (self.d ** 2 * self.t))
+            epsilon = min(1.0, self.c * self.spec.n_actions / (self.d ** 2 * (self.t + 1)))
         if self.rng.random() < epsilon:
             return int(self.rng.integers(self.spec.n_actions))
         return argmax_random(self.means, self.rng)
@@ -209,9 +214,9 @@ class UCB1Tuned(IndexPolicy):
 class UCB1Normal(IndexPolicy):
     """UCB1-Normal (Auer et al., 2002), for Gaussian rewards.
 
-    Actions pulled fewer than ``ceil(8 ln t)`` times are played first. Otherwise
-    the bonus is ``alpha * sqrt(16 * s^2 * ln(t - 1) / n)``, with s^2 the sample
-    variance (normalized by n - 1).
+    At round t (1-based), actions pulled fewer than ``ceil(8 ln t)`` times are
+    played first. Otherwise the bonus is ``alpha * sqrt(16 * s^2 * ln(t - 1) / n)``,
+    with s^2 the sample variance (normalized by n - 1) and n the pulls of the action.
     """
 
     base_name = "UCB1Normal"
@@ -220,7 +225,7 @@ class UCB1Normal(IndexPolicy):
         action = self._unpulled_action()
         if action is not None:
             return action
-        under_sampled = np.flatnonzero(self.counts < math.ceil(8.0 * self._log_t()))
+        under_sampled = np.flatnonzero(self.counts < math.ceil(8.0 * self._log_round()))
         if under_sampled.size:
             return int(under_sampled[self.rng.integers(under_sampled.size)])
         return super()._predict(obs)
@@ -228,14 +233,15 @@ class UCB1Normal(IndexPolicy):
     def _bonus(self) -> np.ndarray:
         n = self.counts
         sample_var = np.where(n > 1, self._sq_dev / np.maximum(n - 1, 1), np.inf)
-        return self.alpha * np.sqrt(16.0 * sample_var * math.log(max(self.t - 1, 1)) / n)
+        return self.alpha * np.sqrt(16.0 * sample_var * self._log_t() / n)
 
 
 class UCBV(IndexPolicy):
     """UCB-V (Audibert, Munos and Szepesvari, 2009).
 
-    Bonus ``alpha * (sqrt(2 V E / n) + c * 3 b E / n)`` with ``E = zeta ln t`` and V
-    the empirical variance (normalized by n). Theorem 4 of the paper takes c = 1, zeta > 1.
+    Bonus ``alpha * (sqrt(2 V E / n) + c * 3 b E / n)`` with ``E = zeta ln t``, t the
+    current round (1-based), and V the empirical variance (normalized by n).
+    Theorem 4 of the paper takes c = 1, zeta > 1.
     """
 
     base_name = "UCBV"
@@ -249,7 +255,7 @@ class UCBV(IndexPolicy):
             warnings.warn("UCB-V with zeta < 1 can have polynomial regret (Audibert et al., 2009, Thm 5).", stacklevel=3)
 
     def _variance_bonus(self) -> np.ndarray:
-        exploration = self.zeta * self._log_t()
+        exploration = self.zeta * self._log_round()
         n = self.counts
         return np.sqrt(2.0 * self.variances * exploration / n) + self.c * 3.0 * self.reward_amplitude * exploration / n
 
@@ -258,11 +264,11 @@ class UCBV(IndexPolicy):
 
 
 class UCBV2(IndexPolicy):
-    """Variance-aware UCB of Fan et al. (2025), called UCB-V2 here.
+    """Variance-aware UCB of Fan, Han, Lv, Xu and Zhou (NeurIPS 2025), called UCB-V2 here.
 
-    Bonus ``alpha * max(sigma_hat / sqrt(L), b / sqrt(n)) * L / sqrt(n)`` with
-    ``L = rho ln T`` and sigma_hat the empirical standard deviation. For b = 1
-    this is the paper's index; its guarantees assume rho > 1. Needs the horizon T.
+    Bonus ``alpha * max(sigma_hat sqrt(L / n), b L / n)`` with ``L = rho ln T`` and
+    sigma_hat the empirical standard deviation. For b = 1 this is the paper's
+    index; its guarantees assume rho > 1. Needs the horizon T.
     """
 
     base_name = "UCBV2"
@@ -270,7 +276,7 @@ class UCBV2(IndexPolicy):
 
     def _check_params(self) -> None:
         if self.rho <= 1.0:
-            warnings.warn("UCB-V2 guarantees assume rho > 1 (Fan et al., 2025).", stacklevel=3)
+            warnings.warn("UCB-V2 guarantees assume rho > 1 (Fan et al., NeurIPS 2025).", stacklevel=3)
 
     def _check_spec(self, spec: EnvSpec) -> None:
         if spec.horizon is None:
@@ -291,6 +297,7 @@ class UCBMin(IndexPolicy):
 
     ``variant="v1"`` pairs UCB1 with UCB-V (UCB-minV1); ``variant="v2"`` pairs it
     with UCB-V2 (UCB-minV2, needs the horizon). The choice is made per action and per step.
+    Both bonuses use ln t with t the current round (1-based), as in the UCB-min experiments.
     """
 
     base_name = "UCBMin"
@@ -310,7 +317,7 @@ class UCBMin(IndexPolicy):
         self._variance_bonus_used = np.zeros(self.spec.n_actions, dtype=bool)
 
     def _bonus(self) -> np.ndarray:
-        ucb1_bonus = self.reward_amplitude * np.sqrt(2.0 * self._log_t() / self.counts)
+        ucb1_bonus = self.reward_amplitude * np.sqrt(2.0 * self._log_round() / self.counts)
         variance_bonus = (UCBV if self.variant == "v1" else UCBV2)._variance_bonus(self)
         self._variance_bonus_used = variance_bonus < ucb1_bonus
         return self.alpha * np.minimum(ucb1_bonus, variance_bonus)

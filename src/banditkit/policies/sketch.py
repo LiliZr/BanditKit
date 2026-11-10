@@ -1,12 +1,15 @@
 """Sketched linear bandits: SOFUL and CBSCFD, based on Frequent Directions.
 
-Both replace the d x d design matrix by a sketch S of at most 2m rows:
-``V = c I + S^T S``. With ``H = (S S^T + c I)^-1`` (2m x 2m), the Woodbury identity
-gives ``V^-1 = (I - S^T H S) / c``, so a step costs O(m d) instead of O(d^2).
+Both replace the d x d design matrix by a sketch S: ``V = c I + S^T S``. With
+``H = (S S^T + c I)^-1``, the Woodbury identity gives ``V^-1 = (I - S^T H S) / c``.
 
-The sketch is the "fast" Frequent Directions variant: rows are appended until
-the buffer holds 2m rows, then an SVD shrinks every squared singular value by
-``delta = sigma_m^2`` (the m-th one), which leaves m - 1 non-zero rows.
+Each paper uses its own Frequent Directions variant:
+
+* SOFUL: the sketch has m rows. At every step x is added, an SVD shrinks every
+  squared singular value by ``delta = sigma_m^2`` (the m-th one), and m - 1
+  non-zero rows remain.
+* CBSCFD: rows are appended until the buffer holds 2m rows; only then the SVD
+  shrinks by ``delta = sigma_m^2``, which leaves m - 1 non-zero rows.
 """
 from __future__ import annotations
 
@@ -26,9 +29,11 @@ __all__ = ["SOFUL", "CBSCFD"]
 class SketchPolicy(LinearPolicy):
     """Frequent Directions sketch shared by SOFUL and CBSCFD."""
 
-    params = {"sketch_size": ParamSpec("int", default=10, low=2, doc="Sketch size m (the buffer holds up to 2m rows).")}
+    params = {"sketch_size": ParamSpec("int", default=10, low=2, doc="Sketch size m.")}
     #: CBSCFD only: the regularization c grows with the sketch error.
     adaptive_regularization = False
+    #: "standard": shrink at every step (SOFUL); "fast": shrink when 2m rows are buffered (CBSCFD).
+    fd_variant = "standard"
 
     @property
     def techniques(self) -> Tuple[str, ...]:
@@ -44,7 +49,7 @@ class SketchPolicy(LinearPolicy):
 
     def _reset(self) -> None:
         super()._reset()
-        self.sketch = np.zeros((0, self.dim))    # S, at most 2m - 1 rows
+        self.sketch = np.zeros((0, self.dim))    # S: non-zero rows only
         self.gram_inv = np.zeros((0, 0))         # H = (S S^T + c I)^-1
         self.b = np.zeros(self.dim)              # sum reward * x
         self.theta = np.zeros(self.dim)          # estimate V^-1 b
@@ -79,7 +84,9 @@ class SketchPolicy(LinearPolicy):
     def _update(self, obs: Observation, action: int, reward: np.ndarray, scalar_reward: float) -> None:
         x = self._working_features(obs)[action]
         self.b += scalar_reward * x
-        if self.sketch.shape[0] + 1 < 2 * self.sketch_size:
+        if self.fd_variant == "standard":
+            self._shrink(np.vstack([self.sketch, x]))
+        elif self.sketch.shape[0] + 1 < 2 * self.sketch_size:
             self._append_row(x)
         else:
             self._shrink(np.vstack([self.sketch, x]))
@@ -100,23 +107,28 @@ class SketchPolicy(LinearPolicy):
         self.gram_inv, self.sketch = H, np.vstack([self.sketch, x])
 
     def _shrink(self, buffer: np.ndarray) -> None:
-        """Frequent Directions step: subtract delta = sigma_m^2 from every squared singular value."""
+        """Frequent Directions step: subtract delta = sigma_m^2 from every squared singular value.
+
+        With fewer than m rows, sigma_m = 0 and the step only rotates the rows.
+        """
         m = self.sketch_size
         _, sing, Vt = np.linalg.svd(buffer, full_matrices=False)
-        delta = sing[m - 1] ** 2
+        delta = sing[m - 1] ** 2 if sing.size >= m else 0.0
         self.sketch_error += delta
         shrunk = np.maximum(sing[: m - 1] ** 2 - delta, 0.0)
-        self.sketch = np.sqrt(shrunk)[:, None] * Vt[: m - 1]
-        self.gram_inv = np.diag(1.0 / (shrunk + self.regularization))  # rows of the sketch are orthogonal
+        keep = shrunk > 0.0
+        self.sketch = np.sqrt(shrunk[keep])[:, None] * Vt[: m - 1][keep]
+        self.gram_inv = np.diag(1.0 / (shrunk[keep] + self.regularization))  # rows of the sketch are orthogonal
 
     def diagnostics(self) -> Dict[str, Any]:
         return {"sketch_error": self.sketch_error}
 
 
 class SOFUL(SketchPolicy):
-    """SOFUL (Kuzborskij, Cella and Cesa-Bianchi, 2019) with the fast Frequent Directions sketch.
+    """SOFUL (Kuzborskij, Cella and Cesa-Bianchi, AISTATS 2019).
 
-    Radius (Theorem 2), with rho the accumulated sketch error::
+    Frequent Directions with m rows, shrunk at every step (Algorithm 4 of the
+    paper). Radius (Theorem 2), with rho the accumulated sketch error::
 
         R sqrt(m ln(1 + n L^2 / (m lambda)) + 2 ln(1/delta) + k ln(1 + rho/lambda)) sqrt(1 + rho/lambda)
             + S sqrt(lambda) (1 + rho/lambda)
@@ -134,15 +146,18 @@ class SOFUL(SketchPolicy):
 
 
 class CBSCFD(SketchPolicy):
-    """CBSCFD (Chen et al., 2020): Frequent Directions with an adaptive regularization.
+    """CBSCFD (Chen, Luo, Zhang, Yu and Lian, IJCAI 2020): Frequent Directions with an adaptive regularization.
 
-    The regularization grows with the sketch error: ``c = lambda + Delta``. Radius (Theorem 2)::
+    The sketch (SCFD) buffers 2m rows before each shrink, and the regularization
+    grows with the sketch error: ``c = lambda + Delta``, Delta the sum of the
+    shrinkages. Radius (Theorem 2)::
 
         R sqrt(2 ln(1/delta) + m ln(1 + n L^2 / (m lambda)) + k ln(1 + Delta/lambda)) + S sqrt(lambda + Delta)
     """
 
     base_name = "CBSCFD"
     adaptive_regularization = True
+    fd_variant = "fast"
 
     def _beta(self, n_obs: int) -> float:
         m, k, lam, err = self.sketch_size, self.dim, self.lambda_, self.sketch_error

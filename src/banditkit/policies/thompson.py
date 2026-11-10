@@ -52,28 +52,23 @@ class BernoulliThompsonSampling(MABPolicy):
 
 
 class GaussianThompsonSampling(MABPolicy):
-    """Gaussian Thompson Sampling (Agrawal and Goyal, 2013).
+    """Thompson Sampling with Gaussian priors (Agrawal and Goyal, AISTATS 2013, Algorithm 2).
 
     Samples ``theta_a ~ N(S_a / (n_a + 1), sigma^2 / (n_a + 1))`` with S_a the sum
-    of the rewards of action a: a N(0, sigma^2) prior and known noise sigma.
+    of the rewards of action a. The paper takes sigma = 1 for rewards in [0, 1],
+    so the default is sigma = b, the reward amplitude. Giving the noise level as
+    ``sigma`` turns it into the Gaussian posterior for known Gaussian noise.
     """
 
     base_name = "ThompsonSampling"
     params = {"sigma": ParamSpec("float", default=None, low=0.0, low_inclusive=False, allow_none=True,
-                                 doc="Noise standard deviation sigma (None: from the environment, else 1).")}
-    uses_reward_range = False
+                                 doc="Scale sigma of the sampling (None: the reward amplitude b, as in the paper).")}
 
     def _reset(self) -> None:
-        super()._reset()
-        self._sigma = self.sigma
-        if self._sigma is None:
-            known = self.spec.scalar_noise_std(self.weights)
-            if known:
-                self._sigma = known
-                self._note("from_problem", f"sigma: sigma={known:.3g}")
-            else:
-                self._sigma = 1.0
-                self._note("assumed", "sigma=1 (unknown for this problem)")
+        super()._reset()  # reports where b comes from
+        if self.sigma is not None:  # b is not used then
+            self._notes = [note for note in self._notes if not note[1].startswith("reward_range")]
+        self._sigma = self.sigma if self.sigma is not None else self.reward_amplitude
 
     def _posterior(self):
         n_plus_one = self.counts + 1.0

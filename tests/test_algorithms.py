@@ -103,7 +103,7 @@ def test_ucb1_index():
 def test_ucbv_index():
     p = _played(bk.UCBV(), [[0.0, 1.0], [0.5, 0.5, 0.5]])
     p.predict(bk.Observation(t=5))
-    e = 1.2 * math.log(5)
+    e = 1.2 * math.log(6)  # E = zeta ln t at round t = 6 (5 pulls done)
     var = np.array([0.25, 0.0])
     n = np.array([2, 3])
     np.testing.assert_allclose(p.diagnostics()["bonus"], np.sqrt(2 * var * e / n) + 3 * e / n)
@@ -116,7 +116,9 @@ def test_ucbmin_is_minimum_of_bonuses():
     pv = _played(bk.UCBV2(), rewards)
     for p in (pmin, p1, pv):
         p.predict(bk.Observation(t=7))
-    b1, bv = p1.diagnostics()["bonus"], pv.diagnostics()["bonus"]
+    # UCB-min evaluates both bonuses at the current round (8 here, 7 pulls done); UCB1 uses the 7 pulls.
+    b1 = p1.diagnostics()["bonus"] * math.sqrt(math.log(8) / math.log(7))
+    bv = pv.diagnostics()["bonus"]
     np.testing.assert_allclose(pmin.diagnostics()["bonus"], np.minimum(b1, bv))
     np.testing.assert_array_equal(pmin.diagnostics()["variance_bonus_used"], bv < b1)
 
@@ -230,3 +232,60 @@ def test_clustering_policies_learn():
     rnd = f["Random"][0]
     for label in res.labels[:-1]:
         assert f[label][0] < 0.6 * rnd, label
+
+
+# ------------------------------------------------- values of the papers
+def test_ucb1_normal_uses_the_round_index():
+    rewards = [[0.1, 0.3, 0.2] * 6, [0.5, 0.7, 0.6] * 6]  # 36 pulls: ceil(8 ln 37) = 29 > 18
+    p = _played(bk.UCB1Normal(), rewards)
+    assert p.predict(bk.Observation(t=36)) in (0, 1)  # both under-sampled: forced exploration
+    q = _played(bk.UCB1Normal(), [[0.1, 0.3] * 20, [0.5, 0.7] * 20])  # 80 pulls, 40 each >= ceil(8 ln 81) = 36
+    q.predict(bk.Observation(t=80))
+    s2 = np.array([np.var([0.1, 0.3] * 20, ddof=1), np.var([0.5, 0.7] * 20, ddof=1)])
+    np.testing.assert_allclose(q.diagnostics()["bonus"], np.sqrt(16 * s2 * math.log(80) / 40))
+
+
+def test_lints_scale_of_the_paper():
+    env = bk.LinearEnv(np.eye(4), np.array([0.5, 0.1, 0.0, 0.0]), noise_std=0.2)
+    p = bk.LinTS(lambda_=1.0)
+    p.reset(env.spec, seed=0)
+    assert math.isclose(p._scale(), 0.2 * math.sqrt(9 * 4 * math.log(1 / 0.01)))
+
+
+def test_gaussian_ts_default_scale_is_the_reward_amplitude():
+    env = bk.GaussianMAB([0.2, 0.5], noise_std=0.05)
+    p = bk.GaussianThompsonSampling(reward_range=4.0)
+    p.reset(env.spec)
+    assert p._sigma == 4.0
+    q = bk.GaussianThompsonSampling(sigma=0.05)
+    q.reset(env.spec)
+    assert q._sigma == 0.05 and not any("reward_range" in text for _, text in q.parameter_notes())
+
+
+def test_soful_shrinks_at_every_step():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(50, 8))
+    env = bk.LinearEnv(X, rng.normal(size=8), noise_std=0.1)
+    obs, _ = env.reset(seed=0)
+    p = bk.SOFUL(sketch_size=3)
+    p.reset(env.spec, seed=0)
+    for step in range(12):
+        p.update(obs, step % 50, 0.0)
+        assert p.sketch.shape[0] <= 2  # at most m - 1 non-zero rows
+        if step < 2:
+            assert p.sketch_error == 0.0  # fewer than m rows: exact OFUL
+    assert p.sketch_error > 0.0
+    # The Woodbury inverse matches (lambda I + S^T S)^-1.
+    V = p.lambda_ * np.eye(8) + p.sketch.T @ p.sketch
+    widths = np.sqrt(np.einsum("ij,ji->i", X, np.linalg.solve(V, X.T)))
+    np.testing.assert_allclose(p._widths(X), widths, rtol=1e-8)
+
+
+def test_sclub_theoretical_threshold():
+    X = np.eye(4) * 2.0  # E[x x^T] = I: lambda_x = 1
+    env = bk.MultiUserLinearEnv(X, np.ones((3, 4)) * 0.1, noise_std=0.3)
+    p = bk.SCLUB(bonus="oful")
+    p.reset(env.spec, seed=0)
+    obs, _ = env.reset(seed=0)
+    p.predict(obs)
+    assert math.isclose(p._alpha_theta, 4 * 0.3 * math.sqrt(4 / 1.0))

@@ -87,12 +87,15 @@ class CLUB(ClusteringPolicy):
     ``||theta_i - theta_j|| > cluster_alpha * (F(T_i) + F(T_j))``, F = :func:`confidence_term`.
 
     ``bonus="paper"`` uses the width ``alpha * sqrt(x^T M^-1 x * ln(t + 1))`` of the
-    paper's Figure 1. The initial graph is Erdos-Renyi with p = 3 ln(n) / n,
-    resampled until connected (the paper's experiments), or complete (its
-    analysis; memory grows as n_users^2, so limited to 5000 users).
+    paper's Figure 1. The paper tunes alpha and alpha_2 on the first rounds of each
+    dataset: their defaults here (1 and 2) are arbitrary. The initial graph is
+    Erdos-Renyi with p = 3 ln(n) / n, resampled until connected (the paper's
+    experiments), or complete (its analysis; memory grows as n_users^2, so
+    limited to 5000 users).
     """
 
     base_name = "CLUB"
+    arbitrary_defaults = {"cluster_alpha": "tuned on the data in the paper"}
     params = {
         "cluster_alpha": ParamSpec("float", default=2.0, low=0.0, low_inclusive=False,
                                    doc="Edge deletion threshold alpha_2 of the paper."),
@@ -110,6 +113,8 @@ class CLUB(ClusteringPolicy):
 
     def _reset(self) -> None:
         super()._reset()
+        if self.bonus == "paper" and self.alpha == self._all_params()["alpha"].default:
+            self._note("arbitrary", "alpha=1.0 (exploration weight, tuned on the data in the paper)")
         n = self.spec.n_users
         self.neighbors: List[Set[int]] = self._initial_graph(n)
         self.component_of = np.zeros(n, dtype=np.int64)    # cluster id of each user
@@ -239,12 +244,17 @@ class SCLUB(ClusteringPolicy):
     not in the paper). ``bonus="paper"`` uses Theorem 1's radius
     ``R sqrt(d ln(1 + T/d) + 2 ln(4 m n_u))``, m the current number of clusters
     (needs the horizon T).
+
+    By default the thresholds take the values of Theorem 1, as in the paper's
+    experiments: ``alpha_theta = 4 R sqrt(d / lambda_x)`` and ``alpha_p = 2``, with
+    lambda_x (at most 1) the smallest eigenvalue of ``E[x x^T]``, estimated by the
+    mean of ``x x^T`` over the actions offered so far.
     """
 
     base_name = "SCLUB"
     params = {
-        "cluster_alpha": ParamSpec("float", default=1.0, low=0.0, low_inclusive=False,
-                                   doc="Split / merge threshold alpha_theta of the paper."),
+        "cluster_alpha": ParamSpec("float", default=None, low=0.0, low_inclusive=False, allow_none=True,
+                                   doc="Split / merge threshold alpha_theta (None: 4 R sqrt(d / lambda_x), Theorem 1)."),
         "freq_alpha": ParamSpec("float", default=2.0, low=0.0, low_inclusive=False,
                                 doc="Frequency threshold alpha_p of the paper."),
         "use_frequency": ParamSpec("bool", default=True, doc="Also split / merge on user arrival frequencies."),
@@ -273,6 +283,24 @@ class SCLUB(ClusteringPolicy):
         self._next_id = 1
         self._phase, self._phase_end = 1, 2
         self.n_splits = self.n_merges = 0
+        # Theorem 1's alpha_theta needs lambda_x, estimated from the action sets seen.
+        self._feature_moment = np.zeros((self.dim, self.dim))
+        self._n_action_sets = 0
+        self._moment_of = None
+        self._alpha_theta = self.cluster_alpha
+        if self.cluster_alpha is None:
+            self._note("from_problem", "cluster_alpha: 4 R sqrt(d / lambda_x), lambda_x from the actions offered")
+
+    def _working_features(self, obs: Observation) -> np.ndarray:
+        X = super()._working_features(obs)
+        if self.cluster_alpha is None and X is not self._moment_of:
+            # Mean of x x^T over the action sets seen so far; alpha_theta follows.
+            self._moment_of = X
+            self._n_action_sets += 1
+            self._feature_moment += (X.T @ X / X.shape[0] - self._feature_moment) / self._n_action_sets
+            lambda_x = min(1.0, float(np.linalg.eigvalsh(self._feature_moment)[0]))
+            self._alpha_theta = 4.0 * self._R * math.sqrt(self.dim / lambda_x) if lambda_x > 1e-12 else math.inf
+        return X
 
     # ----------------------------------------------------------- helpers
     def _cluster_model(self, j: int, X: np.ndarray) -> RidgeModel:
@@ -353,7 +381,7 @@ class SCLUB(ClusteringPolicy):
             return j
         user = self.user_models[u]
         pivot_theta, pivot_n = self.pivots[j]
-        split = np.linalg.norm(user.theta - pivot_theta) > self.cluster_alpha * (
+        split = np.linalg.norm(user.theta - pivot_theta) > self._alpha_theta * (
             confidence_term(user.n_obs) + confidence_term(pivot_n))
         if not split and self.use_frequency:
             t = self._n_updates
@@ -391,7 +419,7 @@ class SCLUB(ClusteringPolicy):
                 if k == j or self._n_checked.get(k, 0) != len(self.members[k]):
                     continue
                 ck = self._cluster_model(k, X)
-                close = np.linalg.norm(cj.theta - ck.theta) < 0.5 * self.cluster_alpha * (
+                close = np.linalg.norm(cj.theta - ck.theta) < 0.5 * self._alpha_theta * (
                     confidence_term(cj.n_obs) + confidence_term(ck.n_obs))
                 if close and self.use_frequency:
                     t = self._n_updates
@@ -419,4 +447,4 @@ class SCLUB(ClusteringPolicy):
 
     def diagnostics(self) -> Dict[str, Any]:
         n_buckets = sum(c.buckets.champions.size for c in self.cluster_models.values() if c.buckets is not None)
-        return {"n_user_clusters": len(self.members), "n_buckets": n_buckets}
+        return {"n_user_clusters": len(self.members), "n_buckets": n_buckets, "alpha_theta": self._alpha_theta}
