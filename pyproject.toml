@@ -19,8 +19,14 @@ datasets = ["pandas>=1.5", "scipy>=1.9"]
 all = ["pandas>=1.5", "matplotlib>=3.6", "plotly>=5.15", "scipy>=1.9"]
 dev = ["pytest>=7"]
 
+[project.scripts]
+banditkit = "banditkit.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+banditkit = ["dashboard.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

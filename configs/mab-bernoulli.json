@@ -1,0 +1,9 @@
+{
+  "description": "Classical MAB: 10 Bernoulli instances with 10 arms (means uniform in [0.05, 0.95], gap >= 0.05), 2 runs each. Theoretical defaults.",
+  "env": {"kind": "bernoulli", "n_instances": 10, "n_actions": 10, "min_gap": 0.05, "seed": 0},
+  "policies": [
+    {"policy": "UCB1"}, {"policy": "UCB1Tuned"}, {"policy": "UCBV"}, {"policy": "UCBMinV1"},
+    {"policy": "KLUCB"}, {"policy": "BernoulliThompsonSampling"}, {"policy": "Random"}
+  ],
+  "experiment": {"horizon": 10000, "n_runs": 2, "seed": 0, "log_interval": 50}
+}

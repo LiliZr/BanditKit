@@ -3,6 +3,10 @@
 Multi-armed, multi-objective and linear bandits behind one API, with reproducible
 experiments, publication figures and explanatory figures.
 
+**See results right after cloning:** open [`dashboard.html`](dashboard.html) in a browser.
+It shows the experiments stored in [`results/`](results), with no install and no server.
+See [Results and dashboard](#results-and-dashboard) to run new ones.
+
 * **Any numerical data**: environments take plain NumPy arrays (mean rewards, action
   features, user parameters...). Bring your own data and your own preprocessing; see
   [Your own data](#your-own-data).
@@ -26,6 +30,51 @@ pip install -e ".[dev]"     # + pytest
 ```
 
 Python 3.10 or later. Only numpy is required; the extras add analysis, figures and datasets.
+
+## Results and dashboard
+
+Every experiment of the repository is a folder of [`results/`](results), produced by a
+JSON configuration of [`configs/`](configs) with fixed seeds:
+
+| Folder | Problem |
+| --- | --- |
+| `mab-bernoulli` | 10 Bernoulli MABs with 10 arms; UCB family, KL-UCB, Thompson Sampling |
+| `linear-synthetic` | 10 linear bandits (1000 actions in R^20); LinUCB and its efficient variants, SOFUL, CBSCFD, LinTS |
+| `linear-search` | theoretical hyperparameters against the best ones found by a search |
+| `multi-user-synthetic` | 100 users in 5 clusters, 20 actions offered per step; LinUCB, CLUB, SCLUB |
+| `pareto-two-objectives` | two-objective MAB with a concave Pareto front; Pareto UCB1 |
+| `steam-bigdata2025` | real data: Steam instances of Izri et al. (BigData 2025), 1807 features |
+
+A folder holds `config.json` (what was run), `results.npz` (every run, `bk.Results.load`)
+and `summary.json` (what the dashboard draws). Rerun, add or compare experiments:
+
+```bash
+python -m banditkit run configs/linear-synthetic.json --generate-dashboard   # run, then rebuild dashboard.html
+python -m banditkit run results/mab-bernoulli/config.json --name mab-50-runs --n-runs 5
+python -m banditkit dashboard                                  # dashboard.html from every folder of results/
+python -m banditkit dashboard results/mab-bernoulli results/mab-50-runs --out mab.html   # chosen folders only
+```
+
+`pip install -e .` also installs the `banditkit` command (`banditkit run ...`). In the
+dashboard, the list on the left switches between folders. **Open a results folder…**
+adds folders from disk (one folder, or a whole `results/` folder) without rebuilding
+anything. Charts load plotly.js from a CDN; `banditkit dashboard --offline` embeds it.
+
+A configuration names the environment, the policies and the settings of `bk.Experiment`:
+
+```json
+{
+  "description": "One or two sentences shown in the dashboard.",
+  "env": {"kind": "linear", "n_instances": 10, "n_actions": 1000, "n_features": 20, "seed": 0},
+  "policies": [{"policy": "LinUCB"}, {"policy": "LinUCB", "n_buckets": "sqrt", "label": "LinUCB buckets"}],
+  "experiment": {"horizon": 3000, "n_runs": 2, "seed": 0, "log_interval": 15}
+}
+```
+
+`env.kind` is `bernoulli`, `gaussian`, `linear` or `multi_user` (synthetic, `bk.sample_instances`),
+`make_env` (keywords of `bk.make_env`), `npz` (a file of your own, see
+[Your own data](#your-own-data)) or `dataset` (a function of `banditkit.datasets`).
+In Python, `banditkit.report.save_run(results, "results/my-run")` writes the same folder.
 
 ## Quick start
 
@@ -258,6 +307,25 @@ The papers do not state how the singular values are shared between users and ite
 arrivals (here uniform, or `arrivals="data"`). `steam_linear` applies the binary variant
 to Steam (a recommended game is 1); these papers use MovieLens and Yelp, not Steam.
 
+### High-dimensional single-user instances (Izri, Groz and Maniu, BigData 2025)
+
+`datasets.steam_single_user(seed)`, `datasets.movielens_single_user(seed)` and
+`datasets.bigdata2025_instances("steam", n_instances)` build the instances of the paper
+from its processed data, downloaded once from
+[Stochastic-linear-bandits](https://github.com/LiliZr/Stochastic-linear-bandits). One user,
+drawn with the seed, per instance:
+
+* Steam: 2000 games with 1807 features (metadata, rating class, one-hot tags). The user's
+  parameter is the least-squares fit of "recommended" on the games they reviewed; mean
+  rewards are min-max normalized over the catalog; noise 0.1.
+* MovieLens: the movies the user rated, with their year, genres, rating statistics and
+  the users who rated them (one-hot); the mean reward is the rating / 5.
+
+`paper_code=True` rebuilds the Steam instances exactly as the repository code does. That
+code keeps the CSV index column as a feature (about 90% of the squared norm of a game
+vector) and pairs the reviewed games, in catalog order, with labels in review order. The
+default drops the index column and aligns each game with its own label.
+
 ### Real rewards for classical MABs
 
 Thompson Sampling and KL-UCB come with guarantees for Bernoulli or Gaussian rewards.
@@ -297,6 +365,7 @@ with your own pipeline and pass it to `GroupRecommendationMAB`.
 * Li, Chen, Li, Leung. Improved algorithm on online clustering of bandits. IJCAI 2019 (SCLUB; MovieLens preprocessing).
 * Wang, Xie, Liu, Li, Lui. Online clustering of bandits with misspecified user models. NeurIPS 2023 (binary MovieLens preprocessing).
 * Gupta, Chaudhari, Joshi, Yağan. Multi-armed bandits with correlated arms. IEEE Transactions on Information Theory, 2021 (MovieLens MABs).
+* Izri, Groz, Maniu. Implementing efficient linear bandits via sketches and random projections. IEEE BigData 2025, pp. 956-965 (single-user Steam and MovieLens instances).
 * Dolan, Moré. Benchmarking optimization software with performance profiles. Mathematical Programming, 2002.
 
 ## Tests

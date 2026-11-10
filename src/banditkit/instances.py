@@ -14,13 +14,13 @@ from typing import List, Optional
 import numpy as np
 
 from ._validation import check_choice, check_float, check_int
-from .envs import BernoulliMAB, GaussianMAB, LinearEnv
+from .envs import BernoulliMAB, GaussianMAB, LinearEnv, MultiUserLinearEnv
 from .envs.base import Environment
 
 __all__ = ["sample_instances", "KINDS"]
 
-#: Kinds of instances: classical MAB with Bernoulli or Gaussian rewards, linear bandit.
-KINDS = ("bernoulli", "gaussian", "linear")
+#: Kinds of instances: classical MAB with Bernoulli or Gaussian rewards, linear bandit, clustered users.
+KINDS = ("bernoulli", "gaussian", "linear", "multi_user")
 
 _MAX_TRIES = 1000
 
@@ -39,16 +39,20 @@ def _gap(means: np.ndarray) -> float:
 
 def sample_instances(kind: str, n_instances: int, n_actions: int, n_features: Optional[int] = None,
                      noise_std: float = 0.1, theta_norm: float = 1.0, mean_range=(0.05, 0.95),
-                     min_gap: Optional[float] = None, seed: Optional[int] = 0) -> List[Environment]:
+                     min_gap: Optional[float] = None, n_users: int = 100, n_clusters: int = 5,
+                     n_candidates: Optional[int] = None, seed: Optional[int] = 0) -> List[Environment]:
     """Draw ``n_instances`` problems from one distribution.
 
     Parameters
     ----------
-    kind : {"bernoulli", "gaussian", "linear"}
+    kind : {"bernoulli", "gaussian", "linear", "multi_user"}
         ``"bernoulli"``: means uniform in ``mean_range``. ``"gaussian"``: same means,
         Gaussian noise of std ``noise_std``. ``"linear"``: a new action set (uniform on
         the unit sphere) and a new theta (uniform direction, norm ``theta_norm``) per
-        instance, Gaussian noise of std ``noise_std``.
+        instance, Gaussian noise of std ``noise_std``. ``"multi_user"``: the same
+        action set, plus ``n_clusters`` thetas shared by the ``n_users`` users
+        (user u in cluster u mod n_clusters), as in the synthetic experiments of
+        CLUB and SCLUB.
     n_instances : int
         Number of problems.
     n_actions : int
@@ -63,7 +67,11 @@ def sample_instances(kind: str, n_instances: int, n_actions: int, n_features: Op
         Interval of the arm means (Bernoulli and Gaussian problems).
     min_gap : float, optional
         Redraw an instance while the gap between its best and second best mean
-        reward is below this value.
+        reward is below this value (not for ``"multi_user"``).
+    n_users, n_clusters : int
+        Users and clusters of users (``"multi_user"`` only).
+    n_candidates : int, optional
+        Actions offered at each step, drawn at random (``"multi_user"`` only; None: all).
     seed : int, optional
         Seed of the draws (the same seed gives the same instances).
 
@@ -82,14 +90,25 @@ def sample_instances(kind: str, n_instances: int, n_actions: int, n_features: Op
         raise ValueError(f"`mean_range` must satisfy low < high, got {tuple(mean_range)}.")
     if kind == "bernoulli" and not 0.0 <= low < high <= 1.0:
         raise ValueError("Bernoulli means must lie in [0, 1]: set `mean_range` inside [0, 1].")
-    if kind == "linear":
+    if kind in ("linear", "multi_user"):
         n_features = check_int("n_features", n_features, low=1)
     elif n_features is not None:
-        raise ValueError(f"`n_features` only applies to kind='linear', not {kind!r}.")
+        raise ValueError(f"`n_features` only applies to kind='linear' or 'multi_user', not {kind!r}.")
+    if kind == "multi_user":
+        n_users = check_int("n_users", n_users, low=1)
+        n_clusters = check_int("n_clusters", n_clusters, low=1, high=n_users)
+        if min_gap is not None:
+            raise ValueError("`min_gap` does not apply to kind='multi_user'.")
 
     rng = np.random.default_rng(seed)
     instances: List[Environment] = []
     for i in range(n_instances):
+        if kind == "multi_user":
+            X = _unit_rows(rng, n_actions, n_features)
+            centers = theta_norm * _unit_rows(rng, n_clusters, n_features)
+            thetas = centers[np.arange(n_users) % n_clusters]
+            instances.append(MultiUserLinearEnv(X, thetas, noise_std=noise_std, n_candidates=n_candidates))
+            continue
         for _ in range(_MAX_TRIES):
             if kind == "linear":
                 X = _unit_rows(rng, n_actions, n_features)

@@ -1,0 +1,9 @@
+{
+  "description": "Multi-user linear bandit: 5 instances of 100 users in 5 clusters, 500 actions in R^10, 20 random actions offered per step (as in CLUB and SCLUB), 2 runs each. Theoretical defaults.",
+  "env": {"kind": "multi_user", "n_instances": 5, "n_actions": 500, "n_features": 10, "n_users": 100, "n_clusters": 5,
+          "n_candidates": 20, "noise_std": 0.1, "seed": 0},
+  "policies": [
+    {"policy": "LinUCB"}, {"policy": "LinUCB", "user_model": "individual"}, {"policy": "CLUB"}, {"policy": "SCLUB"}
+  ],
+  "experiment": {"horizon": 10000, "n_runs": 2, "seed": 0, "log_interval": 50}
+}

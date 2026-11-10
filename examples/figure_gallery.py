@@ -3,8 +3,8 @@
 Usage: python examples/figure_gallery.py OUTPUT.html [N_JOBS]
 
 Every comparison averages 20 runs or more. Linear comparisons pool several
-synthetic instances; classical MABs use MovieLens ratings per genre, as in
-Gupta et al. (IEEE TIT 2021); MovieLens is downloaded once.
+synthetic instances; classical MABs use a seeded synthetic Bernoulli problem.
+Everything is synthetic and seeded, so the gallery runs anywhere without downloads.
 Hyperparameters keep their theoretical defaults, except in the search example.
 Takes a few minutes.
 """
@@ -22,7 +22,7 @@ import plotly.io as pio
 import plotly.offline
 
 import banditkit as bk
-from banditkit import datasets, plot
+from banditkit import plot
 from banditkit.plot import interactive as iplot
 from banditkit.plot.style import rc_params
 
@@ -85,13 +85,13 @@ def compute(n_jobs: int):
     fig_k.legend(handles, ["LinUCB", "LinUCB with √K buckets"], loc="outside lower center", ncols=2, frameon=False)
     pub["scaling"] = png(fig_k)
 
-    # Classical MAB on real rewards: MovieLens ratings per genre (Gupta et al., 2021), 20 runs.
-    genres = datasets.movielens_mab("small", arms="genres")
+    # Classical MAB: one seeded Bernoulli problem with 10 arms, 20 runs.
+    mab = bk.sample_instances("bernoulli", n_instances=1, n_actions=10, min_gap=0.05, seed=3)[0]
     mab_policies = [bk.UCB1(), bk.UCBV(), bk.UCBMinV1(), bk.KLUCB(), bk.BernoulliThompsonSampling(),
                     bk.GaussianThompsonSampling(), bk.Random()]
-    res_t = bk.Experiment(genres, mab_policies, horizon=10_000, n_runs=20, seed=3, **run).run()
+    res_t = bk.Experiment(mab, mab_policies, horizon=10_000, n_runs=20, seed=3, **run).run()
     pub["real"] = png(plot.curves(res_t, band="ci95")[0])
-    inter["gain"] = div(iplot.gain_vs_uniform(res_t, genres), "gain")
+    inter["gain"] = div(iplot.gain_vs_uniform(res_t, mab), "gain")
 
     # Multi-objective: a front with a concave part (arm 2), as in Drugan and Nowe (2013), fig. 1. 20 runs.
     mo_means = np.array([[0.95, 0.20], [0.85, 0.50], [0.55, 0.55], [0.20, 0.95], [0.45, 0.80],
@@ -102,16 +102,16 @@ def compute(n_jobs: int):
     pub["pareto"] = png(plot.pareto_panel(res_mo)[0])
     inter["scalarization"] = div(iplot.scalarization(mo, weights=[0.5, 0.5]), "scalarization")
 
-    # Presentation figures on the MovieLens genres. Averaged figures use 20 runs; the others show one decision process.
-    ucb_runs = [bk.trace(genres, bk.UCB1(), 10_000, seed=s, every=50) for s in range(20)]
-    ts_run = bk.trace(genres, bk.BernoulliThompsonSampling(), 10_000, seed=0, every=50)
+    # Presentation figures on the same Bernoulli problem. Averaged figures use 20 runs; the others show one decision process.
+    ucb_runs = [bk.trace(mab, bk.UCB1(), 10_000, seed=s, every=50) for s in range(20)]
+    ts_run = bk.trace(mab, bk.BernoulliThompsonSampling(), 10_000, seed=0, every=50)
     inter["allocation"] = div(iplot.allocation(ucb_runs), "allocation")
     inter["regret_by_arm"] = div(iplot.regret_by_arm(ucb_runs), "regret_by_arm")
     inter["estimates"] = div(iplot.estimates(ucb_runs[0]), "estimates")
     inter["why"] = div(iplot.why_this_arm(ucb_runs[0]), "why")
     inter["beliefs"] = div(iplot.beliefs(ts_run), "beliefs")
     inter["prob_best"] = div(iplot.prob_best(ts_run), "prob_best")
-    inter["ucbmin"] = div(iplot.ucbmin_choice(bk.trace(genres, bk.UCBMinV1(), 10_000, every=50)), "ucbmin")
+    inter["ucbmin"] = div(iplot.ucbmin_choice(bk.trace(mab, bk.UCBMinV1(), 10_000, every=50)), "ucbmin")
 
     rng = np.random.default_rng(0)
     ang = np.linspace(0, 2 * np.pi, 25, endpoint=False)
@@ -148,18 +148,18 @@ PUB = [
     ("search", "Valeurs théoriques ou recherchées", "5 instances × 4 runs. Pointillés : alpha et lambda cherchés sur d'autres seeds."),
     ("landscape", "Résultat de la recherche", "LinUCB : regret final selon alpha, une courbe par lambda."),
     ("scaling", "Buckets et taille du catalogue", "5 instances × 2 runs par taille."),
-    ("real", "MAB sur données réelles", "MovieLens, une note par genre, 20 runs (Gupta et al., 2021)."),
+    ("real", "MAB classique", "Problème de Bernoulli à 10 bras (seed 3), 20 runs."),
     ("pareto", "Mesures multi-objectifs", "Comme Drugan et Nowé (2013, fig. 3). 20 runs."),
 ]
 INTER = [
-    ("allocation", "Allocation", "Genres MovieLens, UCB1, moyenne sur 20 runs."),
-    ("regret_by_arm", "Regret par genre", "Genres MovieLens, UCB1, moyenne sur 20 runs."),
-    ("gain", "Gain sur l'allocation uniforme", "Genres MovieLens, 20 runs, bande = écart-type."),
-    ("estimates", "Estimations", "Genres MovieLens, UCB1, une run."),
-    ("why", "Pourquoi ce genre ?", "Une run. Curseur ou Play."),
-    ("beliefs", "Croyances de Thompson Sampling", "Genres MovieLens, une run."),
-    ("prob_best", "Probabilité d'être le meilleur", "Genres MovieLens, une run."),
-    ("ucbmin", "Bonus choisi par UCB-min", "Genres MovieLens, une run."),
+    ("allocation", "Allocation", "Bernoulli, UCB1, moyenne sur 20 runs."),
+    ("regret_by_arm", "Regret par bras", "Bernoulli, UCB1, moyenne sur 20 runs."),
+    ("gain", "Gain sur l'allocation uniforme", "Bernoulli, 20 runs, bande = écart-type."),
+    ("estimates", "Estimations", "Bernoulli, UCB1, une run."),
+    ("why", "Pourquoi ce bras ?", "Une run. Curseur ou Play."),
+    ("beliefs", "Croyances de Thompson Sampling", "Bernoulli, une run."),
+    ("prob_best", "Probabilité d'être le meilleur", "Bernoulli, une run."),
+    ("ucbmin", "Bonus choisi par UCB-min", "Bernoulli, une run."),
     ("ellipsoid", "Ellipsoïde de confiance", "Dimension 2, une run."),
     ("scalarization", "Scalarisation linéaire", "Comme Drugan et Nowé (2013, fig. 1)."),
     ("clusters", "Clusters d'utilisateurs", "60 utilisateurs, 4 vrais groupes, 10 runs par politique."),
@@ -219,7 +219,7 @@ code {{ font-family: var(--font-mono); font-size: 13px; }}
   <header>
     <span class="eyebrow">banditkit 0.1 · aperçus à valider</span>
     <h1>Galerie des figures</h1>
-    <p class="lead">Valeurs théoriques par défaut. 20 runs par comparaison. MAB réels : notes MovieLens par genre.</p>
+    <p class="lead">Valeurs théoriques par défaut. 20 runs par comparaison. Données synthétiques à seed fixe.</p>
   </header>
   <section>
     <header><h2>Figures de publication</h2><p><code>banditkit.plot</code></p></header>
