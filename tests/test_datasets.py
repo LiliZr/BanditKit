@@ -162,3 +162,41 @@ def test_multi_user_env_offers_random_candidates():
     assert np.isclose(best, (obs.action_features @ env.user_thetas[obs.user_id, 0]).max())
     res = bk.Experiment(env, [bk.LinUCB(n_buckets=2), bk.SCLUB(bonus="oful")], horizon=200, seed=0).run()
     assert np.all(np.isfinite(res.final("regret")["LinUCB_AB"]))
+
+
+@pytest.fixture
+def bigdata_home(tmp_path):
+    """Tiny files in the formats of the BigData 2025 repository."""
+    rng = np.random.default_rng(0)
+    folder = tmp_path / "bigdata2025"
+    folder.mkdir()
+    n_games = 40
+    games = pd.DataFrame({"app_id": np.arange(100, 100 + n_games), "user_reviews": rng.integers(10, 1000, n_games),
+                          **{f"tag{j}": rng.integers(0, 2, n_games) for j in range(6)}})
+    games.reset_index().rename(columns={"index": "Unnamed: 0"}).to_csv(folder / "steam_actions.zip", index=False)
+    links = pd.DataFrame({"app_id": rng.choice(games["app_id"], 300), "user_id": rng.integers(0, 5, 300),
+                          "is_recommended": rng.integers(0, 2, 300)}).drop_duplicates(["app_id", "user_id"])
+    links.reset_index(drop=True).to_csv(folder / "steam_links.zip")
+    movies = pd.DataFrame({"userId": np.repeat([1, 2, 3], 8), "movieId": np.tile(np.arange(8), 3),
+                           "rating": rng.integers(1, 11, 24) / 2, "timestamp": 0, "year": 2000,
+                           "Action": rng.integers(0, 2, 24), "movie_mean_ratings": 3.5, "movie_index": 0})
+    movies.to_csv(folder / "movielens.zip")
+    return tmp_path
+
+
+def test_bigdata2025_instances(bigdata_home):
+    env = datasets.steam_single_user(seed=0, n_actions=10, data_home=bigdata_home)
+    assert env.spec.n_features == 7 and env.spec.n_actions <= 10  # the CSV index is not a feature
+    np.testing.assert_allclose(np.linalg.norm(env.action_features, axis=1), 1.0)
+    means = env.mean_rewards(env.reset(seed=0)[0])[:, 0]
+    assert means.min() == 0.0 and means.max() == 1.0  # min-max normalized, as in the paper
+    paper = datasets.steam_single_user(seed=0, n_actions=10, paper_code=True, data_home=bigdata_home)
+    assert paper.spec.n_features == 8  # the repository code keeps the index column
+    ml = datasets.movielens_single_user(seed=0, data_home=bigdata_home)
+    assert ml.spec.n_actions == 8 and ml.spec.n_features == 3 + 3  # year, Action, mean rating + 3 one-hot users
+    stars = ml.mean_rewards(ml.reset(seed=0)[0])[:, 0] * 5  # mean reward = rating / 5
+    assert ml.theta is None and np.allclose(stars * 2, np.round(stars * 2)) and stars.min() >= 0.5
+    envs = datasets.bigdata2025_instances("steam", n_instances=2, n_actions=10, data_home=bigdata_home)
+    assert len(envs) == 2
+    with pytest.raises(FileNotFoundError):
+        datasets.fetch_bigdata2025("steam", data_home=bigdata_home / "empty", download_if_missing=False)
