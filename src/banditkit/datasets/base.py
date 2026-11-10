@@ -22,9 +22,10 @@ Files written by the Scaling-Linear-Bandits preprocessing (``item_features``,
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 
@@ -44,13 +45,13 @@ class LinearDataset:
     Attributes
     ----------
     action_features : ndarray (n_actions, n_features)
-        Item features, rows of norm 1.
+        Item features.
     user_thetas : ndarray (n_users, reward_dim, n_features)
         Parameter of each user, one row per objective.
-    user_stream : ndarray (n_interactions,)
-        Users in the order of the interactions (chronological when timestamps exist).
+    user_stream : ndarray (n_interactions,) or None
+        Users in the order of the interactions, or None for uniform arrivals.
     noise_std : ndarray (reward_dim,)
-        Standard deviation of the residuals of the user fits, used as the noise level.
+        Standard deviation of the Gaussian noise of the environment.
     objectives : tuple of str
         Name of each objective.
     item_ids, user_ids : ndarray
@@ -59,25 +60,31 @@ class LinearDataset:
 
     action_features: np.ndarray
     user_thetas: np.ndarray
-    user_stream: np.ndarray
+    user_stream: Optional[np.ndarray]
     noise_std: np.ndarray
     objectives: Tuple[str, ...] = ("rating",)
     item_ids: Optional[np.ndarray] = None
     user_ids: Optional[np.ndarray] = None
     info: dict = field(default_factory=dict)
 
-    def to_env(self, noise_std: Any = None) -> MultiUserLinearEnv:
-        """Environment that replays the user stream. ``noise_std`` overrides the fitted noise level."""
+    def to_env(self, noise_std: Any = None, n_candidates: Optional[int] = 20) -> MultiUserLinearEnv:
+        """The environment. ``noise_std`` overrides the stored noise level.
+
+        ``n_candidates`` items are offered at each step (20 in Li et al., 2019 and
+        Wang et al., 2023; None: every item).
+        """
+        n_candidates = None if n_candidates is None else min(n_candidates, self.action_features.shape[0])
         return MultiUserLinearEnv(self.action_features, self.user_thetas,
                                   noise_std=self.noise_std if noise_std is None else noise_std,
-                                  user_stream=self.user_stream)
+                                  user_stream=self.user_stream, n_candidates=n_candidates)
 
     def save(self, path: Union[str, Path]) -> Path:
         """Save as an .npz file readable by :func:`load_npz` and :meth:`load`."""
         path = Path(path).with_suffix(".npz")
         path.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(path, action_features=self.action_features, user_thetas=self.user_thetas,
-                            user_stream=self.user_stream, noise_std=self.noise_std,
+                            user_stream=np.array([], dtype=np.int64) if self.user_stream is None else self.user_stream,
+                            noise_std=self.noise_std,
                             objectives=np.array(self.objectives),
                             item_ids=np.array([] if self.item_ids is None else self.item_ids),
                             user_ids=np.array([] if self.user_ids is None else self.user_ids))
@@ -89,7 +96,7 @@ class LinearDataset:
             features = data["action_features"] if "action_features" in data else data["item_features"]
             thetas = data["user_thetas"]
             thetas = thetas[:, None, :] if thetas.ndim == 2 else thetas
-            stream = data["user_stream"] if "user_stream" in data else np.arange(thetas.shape[0])
+            stream = data["user_stream"] if "user_stream" in data and data["user_stream"].size else None
             noise = np.broadcast_to(data["noise_std"] if "noise_std" in data else 0.1, (thetas.shape[1],))
             objectives = tuple(data["objectives"].tolist()) if "objectives" in data else \
                 tuple(f"objective_{j}" for j in range(thetas.shape[1]))
@@ -155,109 +162,88 @@ def filter_min_counts(ratings, min_user_ratings: int = 1, min_item_ratings: int 
     return ratings
 
 
-def _svd_item_embeddings(user_idx, item_idx, values, n_users: int, n_items: int, rank: int, seed: int) -> np.ndarray:
-    """Item embeddings of rank ``rank`` from the truncated SVD of the (users x items) matrix of centered ratings."""
-    from scipy.sparse import csr_matrix
-    from scipy.sparse.linalg import svds
+def ratings_to_linear(ratings, n_users: int = 1000, n_items: int = 1000, n_features: int = 20,
+                      feedback: str = "rating", like_threshold: float = 3.0, arrivals: str = "uniform",
+                      noise_std: float = 0.1, seed: int = 0) -> LinearDataset:
+    """Example preprocessing of ratings into a multi-user linear bandit.
 
-    matrix = csr_matrix((values, (user_idx, item_idx)), shape=(n_users, n_items))
-    rank = max(1, min(rank, min(n_users, n_items) - 1))
-    v0 = np.random.default_rng(seed).uniform(-1, 1, size=min(n_users, n_items))
-    _, sing, vt = svds(matrix, k=rank, v0=v0)
-    return vt.T * np.sqrt(sing)  # (n_items, rank)
+    Based on the real-data experiments of SCLUB (Li, Chen, Li and Leung, IJCAI 2019),
+    with the binary variant of Wang, Xie, Liu, Li and Lui (NeurIPS 2023):
 
+    1. Keep the ``n_items`` most rated items and the ``n_users`` users who rate most.
+    2. Build the users x items matrix: ratings (``feedback="rating"``, Li et al.)
+       or 1 if rating > ``like_threshold`` else 0 (``feedback="binary"``, Wang et al.).
+       Missing entries are 0.
+    3. Truncated SVD of rank d - 1, d = ``n_features``: users U sqrt(S), items V sqrt(S).
+    4. Every vector v becomes ``(v / (sqrt(2) ||v||), 1 / sqrt(2))`` (Eq. 3 of Li et al.),
+       so that every mean reward lies in [0, 1].
 
-def ratings_to_linear(ratings, item_features=None, n_features: int = 100,
-                      objectives: Sequence[str] = ("rating", "like"), like_threshold: float = 4.0,
-                      min_user_ratings: int = 20, min_item_ratings: int = 20, lambda_: float = 1.0,
-                      seed: int = 0) -> LinearDataset:
-    """Example preprocessing of ratings into a multi-user linear bandit (as in the Scaling-Linear-Bandits paper).
-
-    One reasonable pipeline among many: replace any step, or the whole function, as long
-    as the result has the arrays of :class:`LinearDataset`.
-
-    1. Keep users and items with enough ratings (:func:`filter_min_counts`).
-    2. Item features: the given side features, rating statistics (mean, std,
-       log count), then a truncated SVD of the centered rating matrix to reach
-       ``n_features``; columns are standardized, a bias column is added, and rows
-       are scaled to norm 1.
-    3. One ridge regression per user on all their ratings gives ``user_thetas``.
-       Objective ``"rating"``: the rating mapped to [0, 1]; ``"like"``: 1 if
-       rating >= ``like_threshold``, else 0.
-    4. The user stream follows the order of the ratings (by ``timestamp`` if present).
+    The environment offers 20 random items per step (``LinearDataset.to_env``), as in
+    both papers. Choices the papers do not state: how S is split between users and
+    items, the noise level, and the order of user arrivals.
 
     Parameters
     ----------
     ratings : DataFrame
         Columns ``user_id``, ``item_id``, ``rating`` and optionally ``timestamp``.
-    item_features : DataFrame, optional
-        Numeric side features indexed by ``item_id`` (e.g. one-hot genres, year).
+    n_users, n_items : int
+        Number of most active users and most rated items kept (1000 in both papers).
     n_features : int
-        Dimension d of the item features (including the side features and statistics).
-    objectives : sequence of {"rating", "like"}
-        Objectives of the reward vector, in this order.
+        Dimension d of the features (20 in Li et al.).
+    feedback : {"rating", "binary"}
+        Matrix factorized: the ratings, or ratings binarized at ``like_threshold``.
     like_threshold : float
-        Rating from which an interaction counts as a like.
-    min_user_ratings, min_item_ratings : int
-        Minimum number of ratings to keep a user / an item.
-    lambda_ : float
-        Ridge regularization of the user fits.
+        A rating above it counts as positive feedback (3 in Wang et al.).
+    arrivals : {"uniform", "data"}
+        Users arrive uniformly at random, or in the order of their ratings
+        (by ``timestamp`` if present).
+    noise_std : float
+        Standard deviation of the Gaussian reward noise (not stated in the papers).
     seed : int
         Seed of the SVD initialization.
     """
     import pandas as pd
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.linalg import svds
 
     ratings = _check_ratings(ratings)
+    n_users = check_int("n_users", n_users, low=2)
+    n_items = check_int("n_items", n_items, low=2)
     n_features = check_int("n_features", n_features, low=2)
-    lambda_ = check_float("lambda_", lambda_, low=0.0, low_inclusive=False)
-    objectives = tuple(objectives)
-    if not objectives or any(o not in ("rating", "like") for o in objectives):
-        raise ValueError(f"`objectives` must be a non-empty sequence of 'rating' and 'like', got {objectives}.")
-    ratings = filter_min_counts(ratings, check_int("min_user_ratings", min_user_ratings, low=1),
-                                check_int("min_item_ratings", min_item_ratings, low=1))
+    if feedback not in ("rating", "binary"):
+        raise ValueError(f"`feedback` must be 'rating' or 'binary', got {feedback!r}.")
+    if arrivals not in ("uniform", "data"):
+        raise ValueError(f"`arrivals` must be 'uniform' or 'data', got {arrivals!r}.")
+    noise_std = check_float("noise_std", noise_std, low=0.0)
+
+    items = ratings["item_id"].value_counts().index[:n_items]
+    ratings = ratings[ratings["item_id"].isin(items)]
+    users = ratings["user_id"].value_counts().index[:n_users]
+    ratings = ratings[ratings["user_id"].isin(users)]
     if "timestamp" in ratings.columns:
         ratings = ratings.sort_values("timestamp", kind="stable")
     user_codes, user_ids = pd.factorize(ratings["user_id"])
     item_codes, item_ids = pd.factorize(ratings["item_id"])
-    rating = ratings["rating"].to_numpy(dtype=float)
-    n_users, n_items = user_ids.size, item_ids.size
+    rank = n_features - 1
+    if rank >= min(user_ids.size, item_ids.size):
+        raise ValueError(f"`n_features` ({n_features}) must be at most min(n_users, n_items) = "
+                         f"{min(user_ids.size, item_ids.size)} after filtering.")
 
-    # Item features: side features + rating statistics + SVD embeddings.
-    blocks = []
-    if item_features is not None:
-        side = item_features.reindex(item_ids).fillna(0.0)
-        blocks.append(side.select_dtypes("number").to_numpy(dtype=float))
-    stats = pd.DataFrame({"item": item_codes, "rating": rating}).groupby("item")["rating"].agg(["mean", "std", "size"])
-    blocks.append(np.c_[stats["mean"], stats["std"].fillna(0.0), np.log1p(stats["size"])])
-    used = sum(b.shape[1] for b in blocks) + 1  # + bias column
-    if used >= n_features:
-        raise ValueError(f"`n_features` ({n_features}) must exceed the {used} side, statistic and bias columns.")
-    user_means = np.bincount(user_codes, weights=rating, minlength=n_users) / np.bincount(user_codes, minlength=n_users)
-    blocks.append(_svd_item_embeddings(user_codes, item_codes, rating - user_means[user_codes], n_users, n_items,
-                                       n_features - used, seed))
-    X = np.hstack(blocks)
-    std = X.std(axis=0)
-    X = (X - X.mean(axis=0)) / np.where(std > 0, std, 1.0)
-    X = np.c_[X, np.ones(n_items)]
-    X /= np.linalg.norm(X, axis=1, keepdims=True)
+    values = ratings["rating"].to_numpy(dtype=float)
+    if feedback == "binary":
+        values = (values > like_threshold).astype(float)
+    matrix = csr_matrix((values, (user_codes, item_codes)), shape=(user_ids.size, item_ids.size))
+    v0 = np.random.default_rng(seed).uniform(-1, 1, size=min(matrix.shape))
+    u, sing, vt = svds(matrix, k=rank, v0=v0)
+    root = np.sqrt(sing)
 
-    # Targets of each objective, then one ridge regression per user.
-    low, high = rating.min(), rating.max()
-    targets = {"rating": (rating - low) / (high - low if high > low else 1.0),
-               "like": (rating >= like_threshold).astype(float)}
-    Y = np.stack([targets[o] for o in objectives], axis=1)
-    order = np.argsort(user_codes, kind="stable")
-    bounds = np.searchsorted(user_codes[order], np.arange(n_users + 1))
-    d = X.shape[1]
-    thetas = np.empty((n_users, len(objectives), d))
-    residuals = np.empty_like(Y)
-    eye = lambda_ * np.eye(d)
-    for u in range(n_users):
-        rows = order[bounds[u]:bounds[u + 1]]
-        Xu, Yu = X[item_codes[rows]], Y[rows]
-        thetas[u] = np.linalg.solve(Xu.T @ Xu + eye, Xu.T @ Yu).T
-        residuals[rows] = Yu - Xu @ thetas[u].T
-    return LinearDataset(action_features=X, user_thetas=thetas, user_stream=user_codes.astype(np.int64),
-                         noise_std=residuals.std(axis=0), objectives=objectives,
+    def lift(v: np.ndarray) -> np.ndarray:  # Eq. 3 of Li et al. (2019)
+        norms = np.linalg.norm(v, axis=1, keepdims=True)
+        return np.c_[v / (math.sqrt(2.0) * np.where(norms > 0, norms, 1.0)), np.full(len(v), 1.0 / math.sqrt(2.0))]
+
+    features, thetas = lift(vt.T * root), lift(u * root)
+    stream = user_codes.astype(np.int64) if arrivals == "data" else None
+    return LinearDataset(action_features=features, user_thetas=thetas[:, None, :], user_stream=stream,
+                         noise_std=np.array([noise_std]), objectives=(feedback,),
                          item_ids=np.asarray(item_ids), user_ids=np.asarray(user_ids),
-                         info={"n_ratings": int(rating.size), "rating_range": (float(low), float(high))})
+                         info={"n_ratings": int(values.size), "density": values.size / np.prod(matrix.shape)})

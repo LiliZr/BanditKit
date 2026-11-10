@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import numpy as np
 
-from .._validation import check_array
+from .._validation import check_array, check_int
 from ..spec import EnvSpec, Observation
 from .base import Environment
 from .linear import as_noise_std
@@ -29,13 +29,17 @@ class MultiUserLinearEnv(Environment):
         is the largest horizon the environment can serve.
     user_probs : array of shape (n_users,), optional
         Arrival probabilities when no stream is given (default: uniform).
+    n_candidates : int, optional
+        Number L of items offered at each step, drawn uniformly without
+        replacement (None: every item). Clustering-of-bandits papers offer
+        L = 20 items per round (Gentile et al., 2014; Li et al., 2019).
 
-    The optimum of a user is computed the first time the user arrives and then
-    cached, so memory stays linear in the number of users.
+    With every item offered, the optimum of a user is computed the first time
+    the user arrives and then cached, so memory stays linear in the number of users.
     """
 
     def __init__(self, action_features: Any, user_thetas: Any, noise_std: Any = 0.1,
-                 user_stream: Any = None, user_probs: Any = None) -> None:
+                 user_stream: Any = None, user_probs: Any = None, n_candidates: Optional[int] = None) -> None:
         super().__init__()
         self.action_features = np.ascontiguousarray(check_array("action_features", action_features, ndim=2))
         n_actions, n_features = self.action_features.shape
@@ -65,7 +69,11 @@ class MultiUserLinearEnv(Environment):
                 raise ValueError(f"`user_probs` must sum to 1, got {p.sum():.6g}.")
             self.user_probs = p / p.sum()
 
-        self._spec = EnvSpec(n_actions=n_actions, n_features=n_features, reward_dim=reward_dim, n_users=n_users,
+        self.n_candidates = None
+        if n_candidates is not None:
+            self.n_candidates = check_int("n_candidates", n_candidates, low=1, high=n_actions)
+        self._spec = EnvSpec(n_actions=self.n_candidates or n_actions, n_features=n_features, reward_dim=reward_dim,
+                             n_users=n_users,
                              feature_norm=float(np.linalg.norm(self.action_features, axis=1).max()),
                              noise_std=self._noise_std, theta_norm=np.linalg.norm(th, axis=2).max(axis=0))
 
@@ -84,19 +92,25 @@ class MultiUserLinearEnv(Environment):
             user = int(self.np_random.choice(self.user_probs.size, p=self.user_probs))
         else:
             user = int(self.np_random.integers(self.user_thetas.shape[0]))
-        return Observation(t=t, user_id=user, action_features=self.action_features)
+        features = self.action_features
+        if self.n_candidates is not None:
+            offered = self.np_random.choice(features.shape[0], size=self.n_candidates, replace=False)
+            features = features[offered]
+        return Observation(t=t, user_id=user, action_features=features)
 
     def _sample_reward(self, action: int, obs: Observation) -> np.ndarray:
-        mean = self.user_thetas[obs.user_id] @ self.action_features[action]
+        mean = self.user_thetas[obs.user_id] @ obs.action_features[action]
         return mean + self._noise_std * self.np_random.standard_normal(self._noise_std.size)
 
     def mean_rewards(self, obs: Observation) -> np.ndarray:
-        return self.action_features @ self.user_thetas[obs.user_id].T
+        return obs.action_features @ self.user_thetas[obs.user_id].T
 
     def mean_reward(self, action: int, obs: Observation) -> np.ndarray:
-        return self.user_thetas[obs.user_id] @ self.action_features[action]
+        return self.user_thetas[obs.user_id] @ obs.action_features[action]
 
     def best_mean_reward(self, weights: np.ndarray, obs: Observation) -> float:
+        if self.n_candidates is not None:  # the offered items change at every step
+            return float(np.max(obs.action_features @ (weights @ self.user_thetas[obs.user_id])))
         key = (obs.user_id, weights.tobytes())
         if key not in self._best_cache:
             # Scalarize theta first: K*d operations instead of K*d*D.

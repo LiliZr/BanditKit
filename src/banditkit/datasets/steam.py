@@ -70,26 +70,15 @@ def load_steam(path: Union[str, Path]):
     return ratings, games, tags
 
 
-def steam_linear(path: Union[str, Path], n_features: int = 100, n_tags: int = 30, min_user_ratings: int = 20,
-                 min_item_ratings: int = 20, lambda_: float = 1.0, seed: int = 0) -> LinearDataset:
+def steam_linear(path: Union[str, Path], n_users: int = 1000, n_items: int = 1000, n_features: int = 20,
+                 arrivals: str = "uniform", noise_std: float = 0.1, seed: int = 0) -> LinearDataset:
     """Example preprocessing: Steam as a multi-user linear bandit (games are actions).
 
-    Built with :func:`~banditkit.datasets.ratings_to_linear`.
-
-    The objective is ``"like"`` (1 if the user recommends the game). Side features:
-    the numeric columns of games.csv and the ``n_tags`` most frequent tags (one-hot).
+    Built with :func:`~banditkit.datasets.ratings_to_linear` and ``feedback="binary"``:
+    the method of Li et al. (IJCAI 2019) on the binary matrix of Wang et al.
+    (NeurIPS 2023), where a recommended game is 1 and any other entry is 0.
+    These papers use MovieLens and Yelp; applying the method to Steam is our choice.
     """
-    import pandas as pd
-
-    ratings, games, tags = load_steam(path)
-    side = games
-    if tags is not None and n_tags > 0:
-        top = tags["category"].value_counts().index[:n_tags]
-        kept = tags[tags["category"].isin(top)]
-        onehot = pd.crosstab(kept["item_id"], kept["category"])
-        side = onehot if side is None else side.join(onehot, how="outer")
-    if side is not None:
-        side = side.fillna(0.0)
-    return ratings_to_linear(ratings, item_features=side, n_features=n_features, objectives=("like",),
-                             like_threshold=1.0, min_user_ratings=min_user_ratings,
-                             min_item_ratings=min_item_ratings, lambda_=lambda_, seed=seed)
+    ratings, _, _ = load_steam(path)
+    return ratings_to_linear(ratings, n_users=n_users, n_items=n_items, n_features=n_features, feedback="binary",
+                             like_threshold=0.5, arrivals=arrivals, noise_std=noise_std, seed=seed)

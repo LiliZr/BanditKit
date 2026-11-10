@@ -125,6 +125,17 @@ justification are reported as arbitrary: `lambda_=0.1` (any lambda > 0 keeps the
 valid), `epsilon`, `tau`. Values the theory needs but the environment does not give are
 reported as assumed (R = 1, b = 1). `policy.parameter_notes()` lists them for one policy.
 
+A few theoretical values are worth knowing, because they explore much more than the
+values usually tuned in experiments:
+
+| Policy | Default (value of the paper) |
+| --- | --- |
+| `LinTS` | sampling scale v_t = R sqrt(9 d ln(t / delta)) (Agrawal and Goyal, final arXiv version) |
+| `GaussianThompsonSampling` | variance b² / (n + 1), b the reward range (Agrawal and Goyal, AISTATS 2013) |
+| `SCLUB` | split threshold 4 R sqrt(d / lambda_x), lambda_x the smallest eigenvalue of E[x xᵀ] (Theorem 1) |
+| `CLUB` | the paper tunes alpha and alpha_2 on the data: defaults 1 and 2 are reported as arbitrary |
+| `ConfidenceBall1` | L1 ball of Dani et al. with the OFUL radius of Abbasi-Yadkori et al. (as in the thesis code) |
+
 **Search of the best values (slower).** `param_grid` tries every combination on the
 problem and keeps the best one per policy (lowest final regret by default):
 
@@ -218,41 +229,48 @@ repository load as is. For a setting outside this table, subclass `bk.Environmen
 
 ## Datasets: example preprocessing
 
-> **The dataset functions are EXAMPLES of preprocessing.** They show one simple,
-> documented way to turn MovieLens and Steam into bandit environments. They are not
-> the reference preprocessing of these datasets, and nothing else in banditkit depends
-> on them. Adapt them, or replace them with your own pipeline, as long as the output
-> keeps the types of [Your own data](#your-own-data).
+> **The dataset functions are EXAMPLES of preprocessing.** They turn MovieLens and Steam
+> into bandit environments by following published experiments (references below).
+> Nothing else in banditkit depends on them. Adapt them, or replace them with your own
+> pipeline, as long as the output keeps the types of [Your own data](#your-own-data).
 
 ```python
 from banditkit import datasets
 
-data = datasets.movielens_linear("1m", n_features=100)   # downloads MovieLens once
-env = data.to_env()                                     # multi-user linear bandit
+data = datasets.movielens_linear("20m")                 # downloads MovieLens once
+env = data.to_env()                                     # multi-user linear bandit, 20 items per step
 steam = datasets.steam_linear("path/to/kaggle/steam")   # Kaggle files, downloaded by hand
 ```
 
-Default choices of the example pipeline (`datasets.ratings_to_linear`, usable on any
-ratings table with columns `user_id`, `item_id`, `rating`):
+**Multi-user linear bandits** (`datasets.ratings_to_linear`, usable on any ratings table
+with columns `user_id`, `item_id`, `rating`). Based on the real-data experiments of
+SCLUB (Li et al., IJCAI 2019), also used by later clustering-of-bandits papers:
 
-1. keep users and items with at least 20 ratings;
-2. item features: side features, rating statistics, then an SVD of the rating matrix
-   up to `n_features`, standardized, with a bias column, rows of norm 1;
-3. one ridge regression per user gives `user_thetas`;
-4. the user stream follows the order of the ratings.
+1. keep the 1000 most rated items and the 1000 users who rate most;
+2. factorize the users x items matrix: the ratings (Li et al., 2019), or with
+   `feedback="binary"` 1 if rating > 3 else 0 (Wang et al., NeurIPS 2023);
+3. truncated SVD of rank d - 1 (d = 20): user vectors and item vectors;
+4. every vector v becomes (v / (√2 ‖v‖), 1 / √2), so that every mean reward lies in [0, 1];
+5. at each step, 20 random items are offered (`MultiUserLinearEnv(n_candidates=20)`).
+
+The papers do not state how the singular values are shared between users and items
+(here: square root on each side), the noise level (here 0.1) or the order of user
+arrivals (here uniform, or `arrivals="data"`). `steam_linear` applies the binary variant
+to Steam (a recommended game is 1); these papers use MovieLens and Yelp, not Steam.
 
 ### Real rewards for classical MABs
 
 Thompson Sampling and KL-UCB come with guarantees for Bernoulli or Gaussian rewards.
-Real rewards are skewed, heavy-tailed or discrete. These example environments resample
-rewards actually observed for each action (`EmpiricalMAB`, rewards mapped to [0, 1]):
+Real ratings are discrete and skewed. `movielens_mab` follows the MovieLens experiments
+of Gupta et al. (IEEE Transactions on Information Theory, 2021): a step returns one
+real rating of the chosen arm, divided by 5 (`EmpiricalMAB`).
 
-| Function | Actions | Reward | Data |
-| --- | --- | --- | --- |
-| `taxis_mab()` | NYC pickup zones | fare (or total, tip rate) of a real trip | 6,433 trips, downloaded once from GitHub |
-| `movielens_mab("1m")` | genres, or the most rated movies | a real rating / 5 | MovieLens, downloaded once |
-| `steam_mab(path)` | the most reviewed games | hours played (capped at the 99th percentile) | Kaggle files |
+| Call | Arms | Reward |
+| --- | --- | --- |
+| `movielens_mab("small", arms="genres")` | the genres; a movie with several genres gets one at random | a rating of a movie of the genre |
+| `movielens_mab("small", arms="movies")` | the 50 most rated movies | a rating of the movie |
 
+The paper samples ratings from half of the users; here every rating is used.
 `datasets.rewards_to_mab({"action": observed_rewards, ...})` builds the same environment
 from any data.
 
@@ -265,17 +283,20 @@ with your own pipeline and pass it to `GroupRecommendationMAB`.
 * Auer, Cesa-Bianchi, Fischer. Finite-time analysis of the multiarmed bandit problem. Machine Learning, 2002 (UCB1, UCB1-Tuned, UCB1-Normal, epsilon-greedy).
 * Audibert, Munos, Szepesvári. Exploration-exploitation tradeoff using variance estimates in multi-armed bandits. Theoretical Computer Science, 2009 (UCB-V).
 * Fan, Han, Lv, Xu, Zhou. Precise asymptotics and refined regret of variance-aware UCB. NeurIPS 2025 (UCB-V2 here).
+* Agrawal, Goyal. Further optimal regret bounds for Thompson Sampling. AISTATS 2013 (Gaussian Thompson Sampling).
 * Mukherjee, Naveen, Sudarsanam, Ravindran. Efficient-UCBV: an almost optimal algorithm using variance estimates. AAAI 2018.
 * Garivier, Cappé. The KL-UCB algorithm for bounded stochastic bandits and beyond. COLT 2011.
-* Agrawal, Goyal. Thompson Sampling for contextual bandits with linear payoffs. ICML 2013.
+* Agrawal, Goyal. Thompson Sampling for contextual bandits with linear payoffs. ICML 2013; scale v_t of the final version, arXiv:1209.3352 (LinTS).
 * Drugan, Nowé. Designing multi-objective multi-armed bandits algorithms: a study. IJCNN 2013 (Pareto UCB1).
 * Abbasi-Yadkori, Pál, Szepesvári. Improved algorithms for linear stochastic bandits. NeurIPS 2011 (OFUL radius).
 * Dani, Hayes, Kakade. Stochastic linear optimization under bandit feedback. COLT 2008 (ConfidenceBall1).
-* Yu, King, Lyu. CBRAP: contextual bandits with random projection. AAAI 2017.
+* Yu, Lyu, King. CBRAP: contextual bandits with random projection. AAAI 2017.
 * Kuzborskij, Cella, Cesa-Bianchi. Efficient linear bandits through matrix sketching. AISTATS 2019 (SOFUL).
-* Chen et al. Efficient and robust high-dimensional linear contextual bandits. IJCAI 2020 (CBSCFD).
+* Chen, Luo, Zhang, Yu, Lian. Efficient and robust high-dimensional linear contextual bandits. IJCAI 2020 (CBSCFD).
 * Gentile, Li, Zappella. Online clustering of bandits. ICML 2014 (CLUB).
-* Li, Chen, Li, Leung. Improved algorithm on online clustering of bandits. IJCAI 2019 (SCLUB).
+* Li, Chen, Li, Leung. Improved algorithm on online clustering of bandits. IJCAI 2019 (SCLUB; MovieLens preprocessing).
+* Wang, Xie, Liu, Li, Lui. Online clustering of bandits with misspecified user models. NeurIPS 2023 (binary MovieLens preprocessing).
+* Gupta, Chaudhari, Joshi, Yağan. Multi-armed bandits with correlated arms. IEEE Transactions on Information Theory, 2021 (MovieLens MABs).
 * Dolan, Moré. Benchmarking optimization software with performance profiles. Mathematical Programming, 2002.
 
 ## Tests

@@ -58,20 +58,28 @@ def test_missing_variant_without_download(tmp_path):
         datasets.fetch_movielens("25m", data_home=tmp_path, download_if_missing=False)
 
 
-def test_movielens_linear(movielens_home, tmp_path):
-    data = datasets.movielens_linear("small", n_features=20, min_user_ratings=5, min_item_ratings=5,
-                                     data_home=movielens_home)
+def test_movielens_linear_follows_li_et_al(movielens_home, tmp_path):
+    data = datasets.movielens_linear("small", n_users=50, n_items=60, n_features=10, data_home=movielens_home)
     K, d = data.action_features.shape
-    assert d == 20 and data.user_thetas.shape == (data.user_ids.size, 2, 20)
-    np.testing.assert_allclose(np.linalg.norm(data.action_features, axis=1), 1.0)
-    assert data.user_stream.size == data.info["n_ratings"]
+    assert (K, d) == (60, 10) and data.user_thetas.shape == (50, 1, 10)
+    # Eq. 3 of Li et al. (2019): unit norm, last coordinate 1 / sqrt(2), means in [0, 1].
+    for v in (data.action_features, data.user_thetas[:, 0]):
+        np.testing.assert_allclose(np.linalg.norm(v, axis=1), 1.0)
+        np.testing.assert_allclose(v[:, -1], 2 ** -0.5)
+    means = data.user_thetas[:, 0] @ data.action_features.T
+    assert means.min() >= -1e-12 and means.max() <= 1 + 1e-12
+    assert data.user_stream is None  # uniform arrivals
     env = data.to_env()
+    assert env.spec.n_actions == 20  # 20 items offered per step
     res = bk.Experiment(env, [bk.LinUCB(), bk.Random()], horizon=300, seed=0).run()
     assert res.final("regret")["LinUCB"].shape == (1,)
     # Round trip through the documented .npz format.
     path = data.save(tmp_path / "ml.npz")
     again = datasets.load_npz(path)
-    assert isinstance(again, bk.MultiUserLinearEnv) and again.spec.n_actions == K
+    assert isinstance(again, bk.MultiUserLinearEnv) and again.spec.n_users == 50
+    binary = datasets.movielens_linear("small", n_users=50, n_items=60, n_features=10, feedback="binary",
+                                       arrivals="data", data_home=movielens_home)
+    assert binary.objectives == ("binary",) and binary.user_stream.size == binary.info["n_ratings"]
 
 
 def test_load_npz_reads_legacy_scaling_files(tmp_path):
@@ -95,10 +103,10 @@ def test_load_npz_mab_layouts(tmp_path):
 def test_ratings_to_linear_validates_inputs():
     with pytest.raises(ValueError, match="columns"):
         datasets.ratings_to_linear(pd.DataFrame({"user": [1], "item_id": [1], "rating": [1]}))
-    with pytest.raises(ValueError, match="No rating left"):
-        datasets.ratings_to_linear(fake_ratings(), min_user_ratings=10 ** 6)
-    with pytest.raises(ValueError, match="objectives"):
-        datasets.ratings_to_linear(fake_ratings(), objectives=("clicks",))
+    with pytest.raises(ValueError, match="n_features"):
+        datasets.ratings_to_linear(fake_ratings(), n_users=5, n_features=20)
+    with pytest.raises(ValueError, match="feedback"):
+        datasets.ratings_to_linear(fake_ratings(), feedback="clicks")
 
 
 @pytest.fixture
@@ -119,8 +127,8 @@ def steam_home(tmp_path):
 
 
 def test_steam(steam_home):
-    data = datasets.steam_linear(steam_home, n_features=20, n_tags=5, min_user_ratings=5, min_item_ratings=5)
-    assert data.objectives == ("like",) and data.action_features.shape[1] == 20
+    data = datasets.steam_linear(steam_home, n_users=40, n_items=50, n_features=10)
+    assert data.objectives == ("binary",) and data.action_features.shape == (50, 10)
 
 
 def test_rewards_to_mab_scales_real_rewards():
@@ -132,26 +140,25 @@ def test_rewards_to_mab_scales_real_rewards():
         datasets.rewards_to_mab({"a": [1.0]})
 
 
-def test_taxis_mab_from_cached_file(tmp_path):
+def test_movielens_mab_follows_gupta_et_al(movielens_home):
+    genres = datasets.movielens_mab("small", data_home=movielens_home)
+    assert set(genres.action_names) <= set(GENRES) and genres.spec.reward_range == 1.0
+    # One genre per movie: the genres share out the ratings of movies with a genre.
+    _, movies = datasets.fetch_movielens("small", data_home=movielens_home)
+    rated = fake_ratings()
+    n_with_genre = rated["item_id"].isin(movies.loc[movies["genres"].map(len) > 0, "item_id"]).sum()
+    assert sum(s.size for s in genres._samples) == n_with_genre
+    movies_mab = datasets.movielens_mab("small", arms="movies", n_arms=5, data_home=movielens_home)
+    assert movies_mab.spec.n_actions == 5
+    assert datasets.movielens_mab("small", arms="movies", data_home=movielens_home).spec.n_actions == 50
+
+
+def test_multi_user_env_offers_random_candidates():
     rng = np.random.default_rng(0)
-    zones = ["A", "B", "C", "JFK Airport"]
-    df = pd.DataFrame({"pickup_zone": rng.choice(zones, size=400), "fare": rng.gamma(2.0, 5.0, size=400),
-                       "tip": rng.uniform(0, 3, size=400)})
-    df["total"] = df["fare"] + df["tip"]
-    df.to_csv(tmp_path / "taxis.csv", index=False)
-    mab = datasets.taxis_mab(n_arms=3, min_trips=10, data_home=tmp_path)
-    assert sorted(mab.action_names) == ["A", "B", "C"]  # airports left out by default
-    assert mab.spec.reward_range <= 1.0
-    tips = datasets.taxis_mab(reward="tip_rate", n_arms=2, min_trips=10, data_home=tmp_path)
-    assert tips.spec.n_actions == 2
-    with pytest.raises(FileNotFoundError):
-        datasets.fetch_taxis(data_home=tmp_path / "empty", download_if_missing=False)
-
-
-def test_movielens_and_steam_mabs(movielens_home, steam_home):
-    genres = datasets.movielens_mab("small", min_ratings=5, data_home=movielens_home)
-    assert set(genres.action_names) <= set(GENRES) and genres.spec.reward_range <= 1.0
-    movies = datasets.movielens_mab("small", arms="movies", n_arms=5, min_ratings=5, data_home=movielens_home)
-    assert movies.spec.n_actions == 5
-    games = datasets.steam_mab(steam_home, n_arms=4, min_reviews=5)
-    assert games.spec.n_actions == 4
+    env = bk.MultiUserLinearEnv(rng.normal(size=(30, 4)), rng.normal(size=(5, 4)), n_candidates=6)
+    obs, _ = env.reset(seed=0)
+    assert env.spec.n_actions == 6 and obs.action_features.shape == (6, 4)
+    best = env.best_mean_reward(np.ones(1), obs)
+    assert np.isclose(best, (obs.action_features @ env.user_thetas[obs.user_id, 0]).max())
+    res = bk.Experiment(env, [bk.LinUCB(n_buckets=2), bk.SCLUB(bonus="oful")], horizon=200, seed=0).run()
+    assert np.all(np.isfinite(res.final("regret")["LinUCB_AB"]))

@@ -6,7 +6,7 @@ import shutil
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Sequence, Union
+from typing import Union
 
 from .base import LinearDataset, ratings_to_linear
 
@@ -16,6 +16,7 @@ __all__ = ["fetch_movielens", "movielens_linear", "MOVIELENS_VARIANTS"]
 MOVIELENS_VARIANTS = {
     "small": ("https://files.grouplens.org/datasets/movielens/ml-latest-small.zip", "ml-latest-small"),
     "1m": ("https://files.grouplens.org/datasets/movielens/ml-1m.zip", "ml-1m"),
+    "20m": ("https://files.grouplens.org/datasets/movielens/ml-20m.zip", "ml-20m"),
     "25m": ("https://files.grouplens.org/datasets/movielens/ml-25m.zip", "ml-25m"),
     "32m": ("https://files.grouplens.org/datasets/movielens/ml-32m.zip", "ml-32m"),
 }
@@ -50,8 +51,8 @@ def fetch_movielens(variant: str = "small", data_home: Union[str, Path, None] = 
 
     Parameters
     ----------
-    variant : {"small", "1m", "25m", "32m"}
-        ml-latest-small (100k ratings), ml-1m, ml-25m or ml-32m.
+    variant : {"small", "1m", "20m", "25m", "32m"}
+        ml-latest-small (100k ratings), ml-1m, ml-20m, ml-25m or ml-32m.
     data_home : str or Path, optional
         Download folder (see :func:`get_data_home`). An already extracted folder
         (``ml-1m``, ``ml-25m``...) placed there is used as is.
@@ -98,23 +99,17 @@ def _genre_table(movies):
     return pairs.rename(columns={"genres": "category"}).reset_index(drop=True)
 
 
-def movielens_linear(variant: str = "small", n_features: int = 100, objectives: Sequence[str] = ("rating", "like"),
-                     like_threshold: float = 4.0, min_user_ratings: int = 20, min_item_ratings: int = 20,
-                     lambda_: float = 1.0, data_home: Union[str, Path, None] = None, seed: int = 0) -> LinearDataset:
+def movielens_linear(variant: str = "small", n_users: int = 1000, n_items: int = 1000, n_features: int = 20,
+                     feedback: str = "rating", like_threshold: float = 3.0, arrivals: str = "uniform",
+                     noise_std: float = 0.1, data_home: Union[str, Path, None] = None, seed: int = 0
+                     ) -> LinearDataset:
     """Example preprocessing: MovieLens as a multi-user linear bandit (movies are actions).
 
-    Built with :func:`~banditkit.datasets.ratings_to_linear`.
-
-    Side features of a movie: one-hot genres and release year. Parameters are those
-    of :func:`~banditkit.datasets.ratings_to_linear`; ``.to_env()`` gives the environment.
+    Built with :func:`~banditkit.datasets.ratings_to_linear`, which follows Li et al.
+    (IJCAI 2019) and, with ``feedback="binary"``, Wang et al. (NeurIPS 2023). Both
+    papers use MovieLens 20M (``variant="20m"``); the default variant is the small
+    one, for a quick download. ``.to_env()`` gives the environment.
     """
-    import pandas as pd
-
-    ratings, movies = fetch_movielens(variant, data_home)
-    pairs = _genre_table(movies)
-    genres = pd.crosstab(pairs["item_id"], pairs["category"])  # one-hot genres, indexed by item_id
-    side = genres.join(movies.set_index("item_id")[["year"]], how="outer").fillna(0.0)
-    side["year"] = side["year"].where(side["year"] > 0, side["year"][side["year"] > 0].median())
-    return ratings_to_linear(ratings, item_features=side, n_features=n_features, objectives=objectives,
-                             like_threshold=like_threshold, min_user_ratings=min_user_ratings,
-                             min_item_ratings=min_item_ratings, lambda_=lambda_, seed=seed)
+    ratings, _ = fetch_movielens(variant, data_home)
+    return ratings_to_linear(ratings, n_users=n_users, n_items=n_items, n_features=n_features, feedback=feedback,
+                             like_threshold=like_threshold, arrivals=arrivals, noise_std=noise_std, seed=seed)
