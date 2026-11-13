@@ -26,14 +26,17 @@ Open [`dashboard.html`](dashboard.html) in a browser (no install, no server). It
 folders of [`results/`](results):
 
 * pick a folder in the sidebar, or add folders from disk with **Open a results folder**;
-* read the key numbers of the run (best policy, runner-up, fastest policy, runs);
-* read the launch warning of the run and a sentence under the learning curve that sums it up
-  (best policy, runner-up, whether their 95% intervals overlap);
-* choose the metric, cumulative or per-step values, the band (95% interval or ± 1 sd),
+* read the setting of the run as tags, its warning as a table, and its key numbers (best policy,
+  runner-up, fastest policy);
+* read the summary under the learning curve: best policy, runner-up, whether their 95% intervals
+  overlap, last policy;
+* choose, in the floating bar, the metric, cumulative or per-step values, the band (95% interval or ± 1 sd),
   log axes, a reference policy (ratios to it), and what to do with outliers (show, crop the axis, hide);
 * hide, rename or recolor policies (in the sidebar or the legend), change the palette, zoom and pan;
-* pick a look (Metropolis, Navy, Midnight, Material): each one follows the light or dark mode of the
-  browser, and the sun / moon button switches it;
+* pick a look in **Style**: Navy (default, in the spirit of Apple's Liquid Glass: glass sidebar and
+  control bar, depth, motion), Metropolis, Midnight or Material. Each one follows the light or dark
+  mode of the browser, and the sun / moon button switches it. Less transparency or less motion in the
+  system settings turns the glass solid and the motion off;
 * download each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV;
 * look **inside the policies** on one traced run: score of each arm at each round, posteriors of
   Thompson Sampling, allocation of the pulls, regret per arm, confidence ellipsoid of LinUCB,
@@ -152,9 +155,9 @@ what is not stored.
 (the launch warning recalls it when a policy uses them):
 
 * `n_buckets` (LinUCB, CBRAP, CLUB, SCLUB; `"sqrt"`: about √K buckets): the actions are sorted by
-  estimated mean and cut into buckets, rebuilt after `bucket_rebuild_freq` updates (500). A step
-  compares the best action of each bucket, then searches the chosen bucket only. `bucket_by_ucb`
-  sorts by UCB instead; `refresh_champions` updates the best action of a bucket after each step.
+  UCB and cut into buckets, rebuilt after `bucket_rebuild_freq` updates (500). A step compares the
+  best action of each bucket, then searches the chosen bucket only. `bucket_by_ucb=False` sorts by
+  estimated mean instead; `refresh_champions` updates the best action of a bucket after each step.
 * `user_model="kmeans"` (LinUCB): one model per user, pulled towards the centroid of its cluster
   with weight n_u / (n_u + cluster size). The clusters come from a k-means on the user estimates:
   `n_user_clusters` clusters, recomputed every `user_recluster_freq` steps (2000).
