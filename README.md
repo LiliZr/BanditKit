@@ -25,16 +25,22 @@ Python 3.10 or later. Only numpy is required; the extras add datasets and figure
 Open [`dashboard.html`](dashboard.html) in a browser (no install, no server). It shows the
 folders of [`results/`](results):
 
-* pick a folder in the list, or add folders from disk with **Open a results folder…**;
+* pick a folder in the sidebar, or add folders from disk with **Open a results folder**;
+* read the key numbers of the run (best policy, runner-up, fastest policy, runs);
+* read the launch warning of the run and a sentence under the learning curve that sums it up
+  (best policy, runner-up, whether their 95% intervals overlap);
 * choose the metric, cumulative or per-step values, the band (95% interval or ± 1 sd),
   log axes, a reference policy (ratios to it), and what to do with outliers (show, crop the axis, hide);
-* hide, rename or recolor policies (in the table or the legend), change the palette, zoom and pan;
-* export each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV;
+* hide, rename or recolor policies (in the sidebar or the legend), change the palette, zoom and pan;
+* pick a look (Metropolis, Navy, Midnight, Material): each one follows the light or dark mode of the
+  browser, and the sun / moon button switches it;
+* download each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV;
 * look **inside the policies** on one traced run: score of each arm at each round, posteriors of
   Thompson Sampling, allocation of the pulls, regret per arm, confidence ellipsoid of LinUCB,
   arm buckets, user clusters, Pareto front.
 
-Charts load plotly.js from the internet; `python -m banditkit dashboard --offline` embeds it.
+Charts load plotly.js and the fonts from the internet; `python -m banditkit dashboard --offline` embeds
+plotly.js (the page then uses the fonts of the system).
 
 Each folder of `results/` is the output of the configuration of [`configs/`](configs) with
 the same name. The problems are synthetic, drawn from fixed seeds:
