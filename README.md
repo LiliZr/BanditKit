@@ -29,7 +29,10 @@ folders of [`results/`](results):
 * choose the metric, cumulative or per-step values, the band (95% interval or ± 1 sd),
   log axes, a reference policy (ratios to it), and what to do with outliers (show, crop the axis, hide);
 * hide, rename or recolor policies (in the table or the legend), change the palette, zoom and pan;
-* export each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV.
+* export each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV;
+* look **inside the policies** on one traced run: score of each arm at each round, posteriors of
+  Thompson Sampling, allocation of the pulls, regret per arm, confidence ellipsoid of LinUCB,
+  arm buckets, user clusters, Pareto front.
 
 Charts load plotly.js from the internet; `python -m banditkit dashboard --offline` embeds it.
 
@@ -39,9 +42,9 @@ the same name. The problems are synthetic, drawn from fixed seeds:
 | Folder | Problem | Policies |
 | --- | --- | --- |
 | `mab-bernoulli` | 10 Bernoulli MABs, 10 arms | UCB1, UCB1-Tuned, UCB-V, UCB-min, KL-UCB, Thompson Sampling, Random |
-| `linear-synthetic` | 10 linear bandits, 1000 actions in R^20 | LinUCB, ConfidenceBall1, LinUCB with random projection, CBRAP, SOFUL, CBSCFD, LinTS |
+| `linear-synthetic` | 10 linear bandits, 1000 actions in R^20 | LinUCB, ConfidenceBall1, LinUCB with arm buckets or random projection, CBRAP, SOFUL, CBSCFD, LinTS |
 | `linear-search` | 5 linear bandits, 200 actions in R^10 | LinUCB and LinTS: defaults against values found by a grid search |
-| `multi-user-synthetic` | 100 users in 5 clusters, 20 actions offered per step | LinUCB (shared, per user), CLUB, SCLUB |
+| `multi-user-synthetic` | 100 users in 5 clusters, 20 actions offered per step | LinUCB (shared, per user, k-means users), CLUB, SCLUB |
 | `pareto-two-objectives` | two-objective MAB with a concave Pareto front | Pareto UCB1, UCB1, Random |
 
 ## Run experiments
@@ -55,9 +58,9 @@ python -m banditkit run configs/mab-bernoulli.json --name mab-50 --n-runs 50   #
 python -m banditkit dashboard results/mab-bernoulli results/mab-50 --out mab.html
 ```
 
-`run` also takes `--n-jobs`, `--horizon`, `--results-dir` and `--dashboard PATH`. A results
-folder holds `config.json` (what was run), `results.npz` (every run) and `summary.json`
-(what the dashboard reads). A configuration names the environment, the policies and the
+`run` also takes `--n-jobs`, `--horizon`, `--results-dir`, `--dashboard PATH` and `--no-explain`.
+A results folder holds `config.json` (what was run), `results.npz` (every run), `summary.json`
+(what the dashboard reads) and `explain.json` (the "inside the policies" charts, needs plotly). A configuration names the environment, the policies and the
 settings of the experiment:
 
 ```json
@@ -118,7 +121,7 @@ model.partial_fit(A[[action]], [reward])
 | `search_runs`, `search_metric` | runs per combination during the search (on other seeds), and its criterion |
 | `track` | extra measures: `pseudo_regret`, `pareto_regret`, `pareto_share`, `unfairness`, `clusters`, `estimates`, `actions`, `env_metrics` |
 | `measure_memory` | peak memory (slows Python code about fivefold) |
-| `log_interval` | curves are stored every `log_interval` steps (default: about 2000 points) |
+| `log_interval` | curves keep one point every `log_interval` steps (default T // 5000: about 5000 points per run, e.g. 40 for T = 200,000); values at these points are exact, the charts join them with straight lines |
 | `n_jobs` | parallel processes (`-1`: all CPUs) |
 | `weights` | scalarization of a multi-objective reward (default: uniform) |
 | `timeout`, `train_freq`, `checkpoint_dir`, `verbose` | CPU-time limit per run, batched updates, saved runs, messages |
@@ -138,6 +141,17 @@ what is not stored.
 | `sketch_size` | size of the Frequent Directions sketch (SOFUL, CBSCFD) |
 | `user_model` | multi-user LinUCB: `"shared"`, `"individual"` or `"kmeans"` |
 | `subgaussian`, `theta_bound`, `reward_range` | noise level R, norm S of theta, reward range b; read from the environment when it knows them |
+
+**Arm buckets and k-means users.** Two speed-ups of linear policies, without regret guarantee
+(the launch warning recalls it when a policy uses them):
+
+* `n_buckets` (LinUCB, CBRAP, CLUB, SCLUB; `"sqrt"`: about √K buckets): the actions are sorted by
+  estimated mean and cut into buckets, rebuilt after `bucket_rebuild_freq` updates (500). A step
+  compares the best action of each bucket, then searches the chosen bucket only. `bucket_by_ucb`
+  sorts by UCB instead; `refresh_champions` updates the best action of a bucket after each step.
+* `user_model="kmeans"` (LinUCB): one model per user, pulled towards the centroid of its cluster
+  with weight n_u / (n_u + cluster size). The clusters come from a k-means on the user estimates:
+  `n_user_clusters` clusters, recomputed every `user_recluster_freq` steps (2000).
 
 Some theoretical values explore much more than usual tuned values: LinTS (sampling scale
 R sqrt(9 d ln(t/delta))), Gaussian Thompson Sampling (variance b² / (n + 1)) and SCLUB

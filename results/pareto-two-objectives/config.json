@@ -62,6 +62,7 @@
       "pareto_regret",
       "pareto_share",
       "unfairness"
-    ]
+    ],
+    "measure_memory": true
   }
 }
