@@ -221,7 +221,7 @@ def find_runs(results_dir: Union[str, Path] = "results") -> List[Path]:
 
 
 def build_dashboard(folders: Optional[Sequence[Union[str, Path]]] = None, results_dir: Union[str, Path] = "results",
-                    out: Union[str, Path] = "dashboard.html", title: str = "banditkit results",
+                    out: Union[str, Path] = "dashboard.html", title: str = "BanditKit results",
                     offline: bool = False) -> Path:
     """Write the dashboard: one HTML page for the given folders (default: every folder of ``results_dir``).
 

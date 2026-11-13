@@ -1,4 +1,4 @@
-# banditkit
+# BanditKit
 
 Bandit algorithms in Python: multi-armed (MAB), multi-objective, linear, efficient linear
 (random projections, sketches) and multi-user linear (clustering of users). Experiments
@@ -9,6 +9,22 @@ are reproducible (fixed seeds) and their results open in an interactive dashboar
 > They are safe in theory but often explore too much in practice.
 > To fit them to your problem, run a grid search (`param_grid=True`) or set them (`bk.LinUCB(alpha=0.1)`).
 > Every experiment starts with a numbered warning that lists what to know about its settings.
+
+## Ready example
+
+The repository ships the results of five example experiments ([`results/`](results)) and the
+dashboard built from them: learning curves, final values, trade-offs between regret, CPU time and
+memory (in 3D too), a grid search, and a look inside the policies. Right after cloning, open it,
+with nothing to install:
+
+```bash
+git clone https://github.com/LiliZr/BanditKit.git
+cd BanditKit
+open dashboard.html           # macOS (Linux: xdg-open dashboard.html, Windows: start dashboard.html)
+```
+
+It loads plotly.js and its fonts from the internet. After installing (below),
+`python -m banditkit dashboard --open` rebuilds it from `results/` and opens it.
 
 ## Install
 
@@ -32,11 +48,14 @@ folders of [`results/`](results):
   overlap, last policy;
 * choose, in the floating bar, the metric, cumulative or per-step values, the band (95% interval or ± 1 sd),
   log axes, a reference policy (ratios to it), and what to do with outliers (show, crop the axis, hide);
+* compare the costs: regret against CPU time, regret against peak memory, CPU time against memory, or
+  the three at once in a 3D chart you can turn. The Pareto front (no other policy better on all axes)
+  is marked. Memory needs `measure_memory=True`;
 * hide, rename or recolor policies (in the sidebar or the legend), change the palette, zoom and pan;
-* pick a look in **Style**: Navy (default, in the spirit of Apple's Liquid Glass: glass sidebar and
-  control bar, depth, motion), Metropolis, Midnight or Material. Each one follows the light or dark
-  mode of the browser, and the sun / moon button switches it. Less transparency or less motion in the
-  system settings turns the glass solid and the motion off;
+* the look is in the spirit of Apple's Liquid Glass (glass sidebar and control bar, depth, motion).
+  It follows the light or dark mode of the browser, and the sun / moon button switches it.
+  **Style** turns the glass solid. The "reduce transparency" and "reduce motion" system settings
+  turn off the glass and the motion;
 * download each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV;
 * look **inside the policies** on one traced run: score of each arm at each round, posteriors of
   Thompson Sampling, allocation of the pulls, regret per arm, confidence ellipsoid of LinUCB,

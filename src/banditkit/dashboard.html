@@ -6,7 +6,7 @@
 <title>{{TITLE}}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Nunito:wght@400;600;700;800&family=Poppins:wght@500;600;700&family=Roboto+Mono:wght@400&family=Roboto:wght@400;500;700&family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..800;1,14..32,400&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 /* Sidebar on the left (results folders, then the policies: the legend of every chart), the page on the right:
    key numbers in tiles, the warning, the controls, the charts. Four looks (data-look), each in light and dark:
@@ -58,7 +58,8 @@
   --tile1: #1f3b63; --tile1-ink: #ffffff; --tile2: var(--surface); --tile2-ink: var(--ink); --icon-bg: #fdf1dc; --icon-ink: #b86e00;
   --warn: #7a4600; --warn-soft: #fff6e4; --warn-line: #f0b44c;
   --radius: 4px; --shadow: 0 2px 10px rgba(31, 59, 99, .08); --card-border: 0;
-  --sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 600; --fs: 14px;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 700; --fs: 14.5px;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -82,79 +83,13 @@
   color-scheme: dark;
 }
 /* Midnight: always dark, rounded panels, two gradient tiles, magenta and cyan. */
-:root[data-look="midnight"] {
-  --bg: #f5f4fb; --surface: #ffffff; --surface-2: #f1eefa; --ink: #1c1a33; --ink-2: #4f4c6b; --ink-3: #6f6c8c;
-  --line: #e2def0; --line-2: #ece9f6; --hover: #eee9fa; --grid: #ebe7f5; --axis: #b0abc8;
-  --side: #1b2033; --side-2: #282e48; --side-ink: #eef0fa; --side-ink-2: #9aa1c2; --side-line: #262c44;
-  --nav-bg: linear-gradient(90deg, rgba(217, 70, 239, .28), rgba(217, 70, 239, .04)); --nav-ink: #ffffff; --nav-bar: #e879f9;
-  --primary: #a21caf; --on-primary: #ffffff; --sel: #a21caf; --on-sel: #ffffff; --switch-on: #0e7490; --good: #047857;
-  --tile1: linear-gradient(135deg, #a43fc0, #6d4ad8); --tile1-ink: #ffffff; --tile2: linear-gradient(135deg, #087f90, #3156c9); --tile2-ink: #ffffff;
-  --icon-bg: linear-gradient(135deg, #22d3ee, #6366f1); --icon-ink: #ffffff;
-  --warn: #7a4600; --warn-soft: #fff6e4; --warn-line: #e5a23e;
-  --radius: 14px; --shadow: 0 2px 12px rgba(60, 40, 120, .07); --card-border: 0;
-  --sans: "Roboto", system-ui, -apple-system, "Segoe UI", Arial, sans-serif; --title: "Poppins", var(--sans); --title-weight: 600;
-  --mono: "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root[data-look="midnight"]:not([data-theme="light"]) {
-  --bg: #161a2b; --surface: #1f2438; --surface-2: #262c44; --ink: #eef0fa; --ink-2: #aab0cc; --ink-3: #8a91b0;
-  --line: #2e3550; --line-2: #282e47; --hover: #2c3352; --grid: #2a3049; --axis: #4f5778;
-  --side: #1b2033; --side-2: #282e48; --side-ink: #eef0fa; --side-ink-2: #8f96b8; --side-line: #262c44;
-  --nav-bg: linear-gradient(90deg, rgba(217, 70, 239, .28), rgba(217, 70, 239, .04)); --nav-ink: #ffffff; --nav-bar: #e879f9;
-  --primary: #a21caf; --on-primary: #ffffff; --sel: #a21caf; --on-sel: #ffffff; --switch-on: #0ea5c4; --good: #34d399;
-  --tile1: linear-gradient(135deg, #a43fc0, #6d4ad8); --tile1-ink: #ffffff; --tile2: linear-gradient(135deg, #087f90, #3156c9); --tile2-ink: #ffffff;
-  --icon-bg: linear-gradient(135deg, #22d3ee, #6366f1); --icon-ink: #ffffff;
-  --warn: #fcd38a; --warn-soft: #2a2535; --warn-line: #a2782c;
-  color-scheme: dark;
-    --shadow: none;
-  }
-}
-:root[data-look="midnight"][data-theme="dark"] {
-  --bg: #161a2b; --surface: #1f2438; --surface-2: #262c44; --ink: #eef0fa; --ink-2: #aab0cc; --ink-3: #8a91b0;
-  --line: #2e3550; --line-2: #282e47; --hover: #2c3352; --grid: #2a3049; --axis: #4f5778;
-  --side: #1b2033; --side-2: #282e48; --side-ink: #eef0fa; --side-ink-2: #8f96b8; --side-line: #262c44;
-  --nav-bg: linear-gradient(90deg, rgba(217, 70, 239, .28), rgba(217, 70, 239, .04)); --nav-ink: #ffffff; --nav-bar: #e879f9;
-  --primary: #a21caf; --on-primary: #ffffff; --sel: #a21caf; --on-sel: #ffffff; --switch-on: #0ea5c4; --good: #34d399;
-  --tile1: linear-gradient(135deg, #a43fc0, #6d4ad8); --tile1-ink: #ffffff; --tile2: linear-gradient(135deg, #087f90, #3156c9); --tile2-ink: #ffffff;
-  --icon-bg: linear-gradient(135deg, #22d3ee, #6366f1); --icon-ink: #ffffff;
-  --warn: #fcd38a; --warn-soft: #2a2535; --warn-line: #a2782c;
-  color-scheme: dark;
-  --shadow: none;
-}
+
+
+
 /* Material: white floating sidebar, dark active pill, cards with a soft shadow, dark icon squares, green gains. */
-:root[data-look="material"] {
-  --bg: #f0f2f5; --surface: #ffffff; --surface-2: #f8f9fa; --ink: #262626; --ink-2: #525252; --ink-3: #737373;
-  --line: #e2e4e8; --line-2: #eef0f3; --hover: #eef0f3; --grid: #eceef1; --axis: #b4b8be;
-  --side: #ffffff; --side-2: #f0f2f5; --side-ink: #262626; --side-ink-2: #737373; --side-line: #eceef1;
-  --nav-bg: #262626; --nav-ink: #ffffff; --nav-bar: transparent;
-  --primary: #262626; --on-primary: #ffffff; --sel: #262626; --on-sel: #ffffff; --switch-on: #4caf50; --good: #2e7d32;
-  --tile1: var(--surface); --tile1-ink: var(--ink); --tile2: var(--surface); --tile2-ink: var(--ink); --icon-bg: #262626; --icon-ink: #ffffff;
-  --warn: #7a4600; --warn-soft: #fff6e4; --warn-line: #f0b44c;
-  --radius: 8px; --shadow: 0 2px 9px -5px rgba(0, 0, 0, .15); --card-border: 1px solid #ebebeb; --field-line: #d2d6da;
-  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 600;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root[data-look="material"]:not([data-theme="light"]) {
-    --bg: #121417; --surface: #1c1f24; --surface-2: #23272d; --ink: #f1f1f1; --ink-2: #a8a8a8; --ink-3: #7d7d7d;
-    --line: #2c3036; --line-2: #262a30; --hover: #2a2e35; --grid: #2a2e35; --axis: #555a62;
-    --side: #1c1f24; --side-2: #2a2e35; --side-ink: #f1f1f1; --side-ink-2: #a3a3a3; --side-line: #2a2e35;
-    --nav-bg: #f1f1f1; --nav-ink: #121417; --sel: #f1f1f1; --on-sel: #121417; --primary: #f1f1f1; --on-primary: #121417; --good: #7cc47f;
-    --icon-bg: #f1f1f1; --icon-ink: #121417; --warn: #f1c070; --warn-soft: #251f12; --warn-line: #9c6c1e; --shadow: none;
-    --card-border: 1px solid var(--line); --field-line: var(--line);
-    color-scheme: dark;
-  }
-}
-:root[data-look="material"][data-theme="dark"] {
-  --bg: #121417; --surface: #1c1f24; --surface-2: #23272d; --ink: #f1f1f1; --ink-2: #a8a8a8; --ink-3: #7d7d7d;
-  --line: #2c3036; --line-2: #262a30; --hover: #2a2e35; --grid: #2a2e35; --axis: #555a62;
-  --side: #1c1f24; --side-2: #2a2e35; --side-ink: #f1f1f1; --side-ink-2: #a3a3a3; --side-line: #2a2e35;
-  --nav-bg: #f1f1f1; --nav-ink: #121417; --sel: #f1f1f1; --on-sel: #121417; --primary: #f1f1f1; --on-primary: #121417; --good: #7cc47f;
-  --icon-bg: #f1f1f1; --icon-ink: #121417; --warn: #f1c070; --warn-soft: #251f12; --warn-line: #9c6c1e; --shadow: none;
-    --card-border: 1px solid var(--line); --field-line: var(--line);
-  color-scheme: dark;
-}
+
+
+
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: var(--fs, 15px)/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
@@ -168,8 +103,8 @@ svg.i { width: 16px; height: 16px; flex: none; }
 .app { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 100vh; }
 .side { position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 20px 14px 14px;
         background: var(--side); color: var(--side-ink); scrollbar-width: thin; }
-:root[data-look="material"] .side { top: 14px; height: calc(100vh - 28px); margin: 14px 0 14px 14px; border-radius: var(--radius); box-shadow: var(--shadow); }
-:root[data-look="material"] .app { grid-template-columns: 304px minmax(0, 1fr); }
+
+
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px 12px; border-bottom: 1px solid var(--side-line);
          font: var(--title-weight) 21px var(--title); color: var(--side-ink); }
 .brand .mark { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--primary); color: var(--on-primary); }
@@ -198,7 +133,7 @@ svg.i { width: 16px; height: 16px; flex: none; }
 .btn.ghost { background: none; border-color: transparent; color: var(--ink-2); }
 .btn.ghost:hover, .btn.ghost[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
 .btn.sm { height: 28px; padding: 0 9px; font-size: 13px; }
-:root[data-look="midnight"] .btn.primary { background: linear-gradient(90deg, #a21caf, #6d28d9); border-radius: 999px; }
+
 .seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); }
 .seg button { height: 26px; padding: 0 11px; border: 0; border-radius: 5px; background: none; color: var(--ink-2); font: 600 13.5px var(--sans);
               cursor: pointer; white-space: nowrap; }
@@ -274,12 +209,12 @@ main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-co
 .kpi .k-icon svg.i { width: 19px; height: 19px; }
 .kpi:nth-child(1) { background: var(--tile1); color: var(--tile1-ink); }
 .kpi:nth-child(2) { background: var(--tile2); color: var(--tile2-ink); }
-:root:not([data-look="material"]) .kpi:nth-child(1) .k-label, :root:not([data-look="material"]) .kpi:nth-child(1) .k-sub { color: var(--tile1-ink); opacity: .85; }
-:root:not([data-look="material"]) .kpi:nth-child(1) .k-icon { background: rgba(255, 255, 255, .16); color: var(--tile1-ink); }
-:root[data-look="midnight"] .kpi:nth-child(2) .k-label, :root[data-look="midnight"] .kpi:nth-child(2) .k-sub { color: #fff; opacity: .85; }
-:root[data-look="midnight"] .kpi:nth-child(2) .k-icon { background: rgba(255, 255, 255, .16); color: #fff; }
-:root[data-look="midnight"] .kpi:nth-child(1) .k-sub b, :root[data-look="midnight"] .kpi:nth-child(2) .k-sub b { color: #fff; }
-:root:not([data-look="material"]):not([data-look="midnight"]) .kpi:nth-child(1) .k-sub b { color: var(--tile1-ink); }
+:root .kpi:nth-child(1) .k-label, :root .kpi:nth-child(1) .k-sub { color: var(--tile1-ink); opacity: .85; }
+:root .kpi:nth-child(1) .k-icon { background: rgba(255, 255, 255, .16); color: var(--tile1-ink); }
+
+
+
+:root .kpi:nth-child(1) .k-sub b { color: var(--tile1-ink); }
 
 /* Warning of the run */
 .notices { border: 1px solid var(--warn-line); border-left-width: 4px; border-radius: var(--radius); background: var(--warn-soft); }
@@ -347,10 +282,10 @@ tr.off td { opacity: .45; }
 .toast.show { opacity: .97; }
 @media (max-width: 1280px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) {
-  .app, :root[data-look="material"] .app { display: flex; flex-direction: column; }
+  .app{ display: flex; flex-direction: column; }
   .side { display: contents; }
   .side-top { order: 0; display: grid; gap: 10px; padding: 14px 12px; background: var(--side); color: var(--side-ink); }
-  :root[data-look="material"] .side-top { margin: 0; box-shadow: var(--shadow); }
+  
   .runs { grid-auto-flow: column; grid-auto-columns: minmax(150px, max-content); overflow-x: auto; }
   .run .meta { display: none; }
   .run[aria-current="true"]::before { display: none; }
@@ -370,8 +305,8 @@ tr.off td { opacity: .45; }
 .menu > summary .kb-i { display: none; }
 :root { --tip-bg: #23373b; --tip-ink: #ffffff; }
 :root[data-look="navy"] { --tip-bg: #1f3b63; --tip-ink: #ffffff; }
-:root[data-look="midnight"] { --tip-bg: #9333ea; --tip-ink: #ffffff; }
-:root[data-look="material"] { --tip-bg: #262626; --tip-ink: #ffffff; }
+
+
 
 /* How each reference draws its controls. */
 /* Navy (1st reference): flat buttons with a small radius, tile icons as orange glyphs, lowercase sidebar items. */
@@ -383,57 +318,51 @@ tr.off td { opacity: .45; }
 :root[data-look="navy"] .kpi:nth-child(1) .k-icon { background: #ffffff; color: var(--tile1); border-radius: 50%; }
 :root[data-look="navy"] .side-label { letter-spacing: .04em; }
 /* Midnight (2nd): pill buttons and segments with a gradient, colored section titles, a notch on the open folder, round icons. */
-:root[data-look="midnight"] .btn, :root[data-look="midnight"] .seg, :root[data-look="midnight"] .seg button { border-radius: 999px; }
-:root[data-look="midnight"] .seg { background: var(--surface-2); border-color: transparent; }
-:root[data-look="midnight"] .seg button[aria-pressed="true"] { background: linear-gradient(90deg, #a21caf, #6d28d9); color: #fff; }
-:root[data-look="midnight"] select, :root[data-look="midnight"] input[type="number"], :root[data-look="midnight"] input[type="text"] {
-  border-color: transparent; background-color: var(--surface-2); border-radius: 8px; }
-:root[data-look="midnight"] .side-label { color: #e879f9; }
-:root[data-look="midnight"] .pol .name { border-color: transparent; background-color: transparent; }
-:root[data-look="midnight"] .pol .name:hover, :root[data-look="midnight"] .pol .name:focus { background-color: var(--side-2); }
-:root[data-look="midnight"] .run[aria-current="true"]::before { left: -14px; top: 50%; bottom: auto; width: 0; height: 0; border-radius: 0; background: none;
-  transform: translateY(-50%); border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 9px solid #e879f9; }
-:root[data-look="midnight"] .kpi .k-icon { border-radius: 50%; }
-:root[data-look="midnight"] .notices { border-color: transparent; border-left-color: var(--warn-line); }
+
+
+
+
+
+
+
+
+
+
 /* Material (3rd): white floating sidebar with a dark pill, nav-pills (white on gray), raised dark icon squares, uppercase table heads. */
-:root[data-look="material"] .btn, :root[data-look="material"] select, :root[data-look="material"] input[type="number"],
-:root[data-look="material"] input[type="text"] { border-radius: 6px; }
-:root[data-look="material"] .btn { font-weight: 500; }
-:root[data-look="material"] .btn.primary { box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
-:root[data-look="material"] main select, :root[data-look="material"] main input[type="number"],
-:root[data-look="material"] main input[type="text"] { border-color: var(--field-line); }
-:root[data-look="material"] .menu-list { border-radius: 6px; padding: 8px 0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, .1), 0 4px 6px -2px rgba(0, 0, 0, .05); }
-:root[data-look="material"] .menu-list > button { border-radius: 0; padding: 5px 16px; font-weight: 500; }
-:root[data-look="material"] .badge { padding: .25em .65em; border-radius: .45rem; font-weight: 700; font-size: 12px; }
-:root[data-look="material"] .kpi .k-sub { margin: 12px -44px 0 0; padding-top: 10px; border-top: 1px solid var(--line-2); }
-:root[data-look="material"] .finding { background: none; border-radius: 0; border-top: 1px solid var(--line-2); padding: 12px 2px 2px; }
-:root[data-look="material"] .seg { padding: 3px; border-color: transparent; border-radius: 9px; background: var(--bg); }
-:root[data-look="material"] .seg button { border-radius: 7px; }
-:root[data-look="material"] .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 5px rgba(0, 0, 0, .14); }
-:root[data-look="material"] .run { border-radius: 8px; }
-:root[data-look="material"] .run[aria-current="true"] { box-shadow: 0 3px 8px rgba(0, 0, 0, .18); }
-:root[data-look="material"] .kpi .k-icon { border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, .2); }
-:root[data-look="material"] th { background: none; text-transform: uppercase; letter-spacing: .05em; font-size: 11px; font-weight: 700; }
-:root[data-look="material"] .notices { border-color: transparent; border-left-color: var(--warn-line); box-shadow: var(--shadow); }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Midnight and Material: the download menu of a card opens from a "more" icon, top right. */
-:root[data-look="midnight"] .menu > summary, :root[data-look="material"] .menu > summary { width: 32px; padding: 0; justify-content: center;
-  border-color: transparent; background: none; }
-:root[data-look="midnight"] .menu > summary .dl-i, :root[data-look="midnight"] .menu > summary .dl-t,
-:root[data-look="material"] .menu > summary .dl-i, :root[data-look="material"] .menu > summary .dl-t { display: none; }
-:root[data-look="midnight"] .menu > summary .kb-i, :root[data-look="material"] .menu > summary .kb-i { display: block; }
-:root[data-look="midnight"] .menu > summary:hover, :root[data-look="material"] .menu > summary:hover { background: var(--hover); }
+
+
+
+
 
 /* Key numbers: titles font for the values; the gap of the runner-up as a badge. */
 .kpi .k-value { font-family: var(--title); font-weight: 700; }
-:root:not([data-look]) .kpi .k-value, :root[data-look="metropolis"] .kpi .k-value { font-family: var(--sans); }
+
 .delta { display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 4px; font-weight: 700; font-size: 12.5px; background: var(--hover); color: var(--ink); }
 .kpi:nth-child(1) .delta, .kpi:nth-child(2) .delta { background: rgba(255, 255, 255, .18); color: inherit; }
-:root[data-look="material"] .delta { background: none; padding: 0; margin-left: 2px; color: var(--ink); }
-:root[data-look="midnight"] .delta { border-radius: 999px; }
+
+
 /* Section titles of the sidebar: with an icon in Navy and Midnight. */
 .side-label { display: flex; align-items: center; gap: 8px; }
 .side-label svg.i { display: none; width: 15px; height: 15px; }
-:root[data-look="navy"] .side-label svg.i, :root[data-look="midnight"] .side-label svg.i { display: block; }
+:root[data-look="navy"] .side-label svg.i{ display: block; }
 .side .open { width: 100%; justify-content: center; }
 /* Navy (1st reference): a profile-like block on top, orange actions in the card headers. */
 .brand-text { display: grid; }
@@ -446,11 +375,11 @@ tr.off td { opacity: .45; }
 :root[data-look="navy"] .menu > summary { height: 26px; border-color: transparent; background: var(--primary); color: var(--on-primary); font-size: 12.5px; }
 :root[data-look="navy"] .menu > summary:hover, :root[data-look="navy"] .menu[open] > summary { filter: brightness(1.06); background: var(--primary); }
 /* Midnight (2nd reference): the add button as a full-width pill with its icon on the right, "new"-like pill tags, "•••" menus. */
-:root[data-look="midnight"] .side .open { justify-content: space-between; flex-direction: row-reverse; padding: 0 16px; }
-:root[data-look="midnight"] .run .tag { justify-self: start; padding: 0 8px; border-radius: 999px; background: #db2777; color: #fff; font-weight: 600; }
+
+
 .menu > summary .dt-i { display: none; }
-:root[data-look="midnight"] .menu > summary .kb-i { display: none; }
-:root[data-look="midnight"] .menu > summary .dt-i { display: block; }
+
+
 
 /* Header: the setting as tags. */
 .head .desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 110ch; font-size: .95em; }
@@ -459,7 +388,7 @@ tr.off td { opacity: .45; }
 .spec span { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
 .spec b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 :root[data-look="navy"] .spec { border-color: transparent; box-shadow: var(--shadow); border-left: 3px solid var(--primary); }
-/* Warning: one row per point. */
+/* Warning: one row per caveat. */
 .ntable { margin: 0 0 4px; font-size: .95em; }
 .ntable th, .ntable td { padding: 7px 12px; border-bottom: 1px solid var(--warn-line); vertical-align: top; background: none; }
 .ntable th { color: var(--warn); font-size: 12px; text-transform: none; letter-spacing: 0; opacity: .85; }
@@ -512,8 +441,8 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 :root[data-look="navy"] { --chip-radius: 3px; }
 :root[data-look="navy"] .chip.toggle[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 :root[data-look="navy"] details[open] > .chip { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
-:root[data-look="midnight"] { --chip-radius: 999px; }
-:root[data-look="material"] { --chip-radius: 6px; }
+
+
 @media (max-width: 900px) {
   .floatbar { top: 6px; }
   .floatbar .dd.wide { margin-left: 0; }
@@ -738,7 +667,7 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 /* Toggles read as toggles when off: an empty ring, replaced by the check when on. */
 :root[data-look="navy"] .chip.toggle::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ink-2); }
 :root[data-look="navy"] .chip.toggle[aria-pressed="true"]::before { display: none; }
-/* Warning: closed, its points stay visible as tags in the title line. */
+/* Warning: closed, its caveats stay visible as tags in the title line. */
 .nt-tags { display: flex; flex-wrap: wrap; gap: 4px; font-weight: 600; }
 .nt-tags .badge { margin: 0; background: rgba(255, 255, 255, .6); }
 .notices[open] .nt-tags { display: none; }
@@ -800,6 +729,24 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 }
 :root[data-look="navy"] .chip.toggle:not([aria-pressed="true"]) .ck { margin-left: -5px; }
 @media (max-width: 600px) { .ntable .nt-todo::before { content: "What to do: "; color: var(--warn); } }
+
+/* Type: Inter with optical sizes (display cuts on titles), tight tracking on large text as in Apple's type,
+   l and I told apart from 1 (policy names, hyperparameters), tabular figures for numbers. */
+:root[data-look="navy"] body { font-optical-sizing: auto; font-feature-settings: "cv05", "cv08"; letter-spacing: -.003em; }
+:root[data-look="navy"] .head h1 { font-size: 32px; font-weight: 750; letter-spacing: -.028em; line-height: 1.12; }
+:root[data-look="navy"] .card h2 { font-size: 17px; font-weight: 650; letter-spacing: -.012em; }
+:root[data-look="navy"] .kpi .k-value { font-size: 23px; font-weight: 700; letter-spacing: -.02em; }
+:root[data-look="navy"] .kpi .k-label, :root[data-look="navy"] .spec span { font-weight: 500; letter-spacing: 0; }
+:root[data-look="navy"] .spec b { font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; }
+:root[data-look="navy"] .brand-text { font-weight: 750; letter-spacing: -.02em; font-size: 20px; }
+:root[data-look="navy"] .chip, :root[data-look="navy"] .btn, :root[data-look="navy"] .seg button { font-weight: 550; letter-spacing: -.005em; }
+:root[data-look="navy"] .chip b { font-weight: 650; }
+:root[data-look="navy"] .pol .name, :root[data-look="navy"] .run .name { font-weight: 600; letter-spacing: -.008em; }
+:root[data-look="navy"] .pol .val, :root[data-look="navy"] table, :root[data-look="navy"] .kpi .k-sub, :root[data-look="navy"] .spec b { font-variant-numeric: tabular-nums; }
+:root[data-look="navy"] code, :root[data-look="navy"] .params { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0; }
+
+.chart.trade { height: 580px; }
+@media (max-width: 900px) { .chart.trade { height: 420px; } }
 </style>
 {{PLOTLY}}
 </head>
@@ -807,7 +754,7 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 <div class="app">
   <aside class="side" aria-label="Results folders and policies">
     <div class="side-top">
-      <div class="brand"><span class="mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><span class="brand-text">banditkit<span class="brand-sub">Bandit experiments</span></span></div>
+      <div class="brand"><span class="mark"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><span class="brand-text">BanditKit<span class="brand-sub">Bandit experiments</span></span></div>
       <p class="side-label"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Results folders</p>
       <nav class="runs" id="runs" aria-label="Results folders"></nav>
       <label class="btn primary open" for="picker" tabindex="0" title="One folder, or a whole results/ folder: every summary.json inside is added. Nothing is rerun."><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Open a results folder</label>
@@ -833,7 +780,7 @@ const FAMILY = { mab: "MAB", linear: "Linear", multi_user: "Multi-user linear" }
 const PAL_LIGHT = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
 const PAL_DARK = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
 const PALETTES = {
-  banditkit: { name: "banditkit (by family)" },
+  banditkit: { name: "BanditKit (by family)" },
   okabe: { name: "Okabe-Ito (color-blind safe)", colors: ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#F0E442"] },
   tol: { name: "Paul Tol bright", colors: ["#4477AA", "#EE6677", "#228833", "#CCBB44", "#66CCEE", "#AA3377", "#BBBBBB"] },
   tableau: { name: "Tableau 10", colors: ["#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#B07AA1",
@@ -861,7 +808,7 @@ const store = {
 const DEFAULT_UI = {
   metric: "regret", view: "cumulative", band: "ci", logX: false, logY: false, outliers: "crop", factor: 4, ref: "",
   palette: "banditkit", lines: "technique", markers: true, width: 2, font: 13, legend: "top", theme: "auto", look: "navy", uiVersion: 4,
-  finalKind: "box", tradeLogX: "auto", tradeLabels: false, searchLabel: "", solid: false,
+  finalKind: "box", tradeLogX: "auto", tradeLabels: false, tradeView: "", searchLabel: "", solid: false,
   export: { w: 6.4, h: 4, dpi: 300, font: 10, family: "sans", background: "white", title: false },
 };
 const savedUi = store.get("ui", {});
@@ -901,7 +848,7 @@ const ICONS = {
   bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
   layers: '<path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M2 16l10 5 10-5M2 12l10 5 10-5"/>',
 };
-const LOOKS = [["metropolis", "Metropolis"], ["navy", "Navy"], ["midnight", "Midnight"], ["material", "Material"]];
+const LOOKS = [["navy", "Navy"]];
 const icon = (name, cls) => `<svg class="i${cls ? " " + cls : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 const DASH_SVG = { solid: "", dash: "5 3", dot: "1.5 3", dashdot: "6 2.5 1.5 2.5", longdash: "9 3", longdashdot: "9 2.5 1.5 2.5" };
 function lineKey(st, width = 22) {
@@ -943,7 +890,7 @@ function theme() {
 }
 function applyTheme() {
   const root = document.documentElement;
-  root.dataset.look = LOOKS.some(([k]) => k === ui.look) ? ui.look : "navy";
+  root.dataset.look = "navy";
   root.dataset.solid = ui.solid ? "true" : "false";
   if (ui.theme === "auto") delete root.dataset.theme;
   else root.dataset.theme = ui.theme;
@@ -957,9 +904,10 @@ function pageTokens(t) {
 }
 const runKey = run => run.folder || `${run.name}@${run.created}`;
 function rs(run) {
-  const k = runKey(run);
-  perRun[k] = Object.assign({ hidden: [], names: {}, colors: {}, titles: {} }, perRun[k] || {});
-  return perRun[k];
+  // State of a folder in this browser. Always the same object, so that "Hide all" or "Reset" can replace its lists.
+  const k = runKey(run), st = perRun[k] || (perRun[k] = {});
+  for (const [key, empty] of [["hidden", []], ["names", {}], ["colors", {}], ["titles", {}]]) if (!(key in st)) st[key] = empty;
+  return st;
 }
 const run = () => RUNS[current];
 const nameOf = (r, label) => rs(r).names[label] || label;
@@ -1237,48 +1185,144 @@ function figFinal(r, ctx) {
   }) };
 }
 
+// ------------------------------------------------------------------ trade-offs: performance, CPU time, peak memory
+const COST = { cpu: { key: "cpu_time", title: "CPU time per run (s)", short: "CPU" },
+               mem: { key: "memory_mb", title: "Peak memory per run (MB)", short: "Memory" } };
+const perfOk = r => ["performance", "multi-objective"].includes(group(r, ui.metric)) && !!r.final[ui.metric];
+const shortMetric = r => { const t = yTitle(r, ui.metric).replace(/^(Cumulative|Average) /, "").replace(/\s*\([^)]+\)$/, ""); return cap(t); };
+function tradeViews(r) {
+  const cpu = !!r.final.cpu_time, mem = !!r.final.memory_mb, perf = perfOk(r), name = shortMetric(r), out = [];
+  if (cpu && perf) out.push(["cpu", `${name} × CPU`]);
+  if (mem && perf) out.push(["mem", `${name} × Memory`]);
+  if (cpu && mem) out.push(["cpu_mem", "CPU × Memory"]);
+  if (cpu && mem && perf) out.push(["3d", "3D: all three"]);
+  return out;
+}
+function tradeView(r) {
+  const views = tradeViews(r).map(v => v[0]);
+  if (views.includes(ui.tradeView)) return ui.tradeView;
+  return views.includes("3d") ? "3d" : views[0] || null;
+}
+function axisValue(r, which, label) {
+  // A final value: the selected performance metric (with the view of the page), or a cost (raw).
+  if (which === "metric") return finalOf(r, ui.metric, label);
+  const f = (r.final[COST[which].key] || {})[label];
+  return f && isFinite(f.mean) ? f : null;
+}
+function axisTitle(r, which) { return which === "metric" ? `${yTitle(r, ui.metric)} at t = T` : COST[which].title; }
+function lowerIsBetter(r, which) { return which !== "metric" || !higher(r, ui.metric); }
+function spreadLog(values, choice) {
+  const xs = values.filter(v => v > 0);
+  return choice === "auto" ? xs.length > 1 && Math.max(...xs) / Math.min(...xs) > 20 : choice === "log";
+}
 function figTradeoff(r, ctx) {
-  const m = ui.metric;
-  if (!r.final.cpu_time || !r.final[m] || !["performance", "multi-objective"].includes(group(r, m))) return null;
-  const vis = visible(r).map(p => p.label), out = outliersOf(r, m, vis);
-  const pts = r.policies.map((pol, i) => {
-    const c = r.final.cpu_time[pol.label], f = finalOf(r, m, pol.label);
-    return { pol, i, c, f };
-  }).filter(p => vis.includes(p.pol.label) && p.c && p.f && isFinite(p.c.mean) && p.f.mean !== null
-                 && !(ui.outliers === "hide" && out.has(p.pol.label)));
-  if (pts.length < 1) return null;
-  const xs = pts.map(p => p.c.mean).filter(v => v > 0);
-  if (xs.length < 2 || Math.max(...xs) / Math.min(...xs) < 1.5) return null;  // same cost for all: nothing to show
-  const S = styleMap(r, ctx.t);
-  const logX = ui.tradeLogX === "auto" ? (xs.length > 1 && Math.max(...xs) / Math.min(...xs) > 20) : ui.tradeLogX === "log";
-  const data = pts.map(({ pol, i, c, f }) => {
+  const view = tradeView(r);
+  if (!view) return null;
+  if (view === "3d") return figTrade3d(r, ctx);
+  const [xw, yw] = { cpu: ["cpu", "metric"], mem: ["mem", "metric"], cpu_mem: ["cpu", "mem"] }[view];
+  const m = ui.metric, vis = visible(r).map(p => p.label), out = yw === "metric" ? outliersOf(r, m, vis) : new Set();
+  const pts = r.policies.map(pol => ({ pol, x: axisValue(r, xw, pol.label), y: axisValue(r, yw, pol.label) }))
+    .filter(p => vis.includes(p.pol.label) && p.x && p.y && p.y.mean !== null && !(ui.outliers === "hide" && out.has(p.pol.label)));
+  if (!pts.length) return null;
+  const S = styleMap(r, ctx.t), xs = pts.map(p => p.x.mean), logX = spreadLog(xs, ui.tradeLogX);
+  const unitOf = w => w === "metric" ? "" : w === "cpu" ? " s" : " MB";
+  const data = pts.map(({ pol, x, y }) => {
     const color = S[pol.label].color, name = nameOf(r, pol.label);
-    return { type: "scatter", mode: ui.tradeLabels ? "markers+text" : "markers", x: [c.mean], y: [f.mean], name, meta: pol.label,
+    return { type: "scatter", mode: ui.tradeLabels ? "markers+text" : "markers", x: [x.mean], y: [y.mean], name, meta: pol.label,
              text: [esc(name)], textposition: "top center", textfont: { color: ctx.tok.ink2, size: ctx.font * 0.92 },
-             error_x: { type: "data", symmetric: false, array: [c.high - c.mean], arrayminus: [c.mean - c.low], color, thickness: 1.2, width: 3 },
-             error_y: { type: "data", symmetric: false, array: [f.high - f.mean], arrayminus: [f.mean - f.low], color, thickness: 1.2, width: 3 },
+             error_x: { type: "data", symmetric: false, array: [x.high - x.mean], arrayminus: [x.mean - x.low], color, thickness: 1.2, width: 3 },
+             error_y: { type: "data", symmetric: false, array: [y.high - y.mean], arrayminus: [y.mean - y.low], color, thickness: 1.2, width: 3 },
              marker: { color, size: 11, symbol: S[pol.label].symbol, line: { color, width: 1.5 } },
-             hovertemplate: `${esc(name)}<br>CPU %{x:.3~g} s<br>${esc(yTitle(r, m))} %{y:.4~g}<extra></extra>` };
+             hovertemplate: `${esc(name)}<br>${esc(axisTitle(r, xw))}: %{x:.4~g}${unitOf(xw)}<br>${esc(axisTitle(r, yw))}: %{y:.4~g}${unitOf(yw)}<extra></extra>` };
   });
-  // Policies no other policy beats on both axes (lower time, better value).
-  const sign = higher(r, m) ? -1 : 1, front = [...pts].sort((a, b) => a.c.mean - b.c.mean);
+  // The policies that no other one beats on both axes.
+  const sy = lowerIsBetter(r, yw) ? 1 : -1, sorted = [...pts].sort((a, b) => a.x.mean - b.x.mean);
   let best = Infinity; const onFront = [];
-  for (const p of front) if (sign * p.f.mean < best) { best = sign * p.f.mean; onFront.push(p); }
-  if (onFront.length > 1) data.push({ type: "scatter", mode: "lines", x: onFront.map(p => p.c.mean), y: onFront.map(p => p.f.mean),
-                                      line: { color: ctx.tok.ink3, width: 1, dash: "dot", shape: "hv" }, name: "Pareto front",
-                                      hoverinfo: "skip" });
-  const yaxis = axis(ctx, { title: { text: customTitle(r, `trade:${m}:y`, `${yTitle(r, m)} at t = T`), font: { color: ctx.tok.ink } },
-                            type: ui.logY ? "log" : "linear" });
-  if (ui.outliers === "crop" && out.size) {
-    const kept = pts.filter(p => !out.has(p.pol.label)).flatMap(p => [p.f.low, p.f.high]);
+  for (const p of sorted) if (sy * p.y.mean < best) { best = sy * p.y.mean; onFront.push(p); }
+  if (onFront.length > 1) data.push({ type: "scatter", mode: "lines", x: onFront.map(p => p.x.mean), y: onFront.map(p => p.y.mean),
+                                      line: { color: ctx.tok.ink3, width: 1, dash: "dot", shape: "hv" }, name: "Pareto front", hoverinfo: "skip" });
+  const yaxis = axis(ctx, { title: { text: customTitle(r, `trade:${view}:${m}:y`, axisTitle(r, yw)), font: { color: ctx.tok.ink } },
+                            type: (yw === "metric" ? ui.logY : spreadLog(pts.map(p => p.y.mean), ui.tradeLogX)) ? "log" : "linear" });
+  if (yw === "metric" && ui.outliers === "crop" && out.size) {
+    const kept = pts.filter(p => !out.has(p.pol.label)).flatMap(p => [p.y.low, p.y.high]);
     const range = cropRange(kept, ui.logY); if (range) yaxis.range = range;
   }
-  return { data, layout: base(ctx, `${title(r, m)} against CPU time`, {
-    legend: legend(ctx, chartWidth(ctx, "trade")), showlegend: !ui.tradeLabels || onFront.length > 1, annotations: offScale(r, out, ctx, m),
-    xaxis: axis(ctx, Object.assign({ title: { text: customTitle(r, "trade:x", "CPU time per run (s)"), font: { color: ctx.tok.ink } },
+  return { data, layout: base(ctx, `${axisTitle(r, yw)} against ${axisTitle(r, xw).toLowerCase()}`, {
+    legend: legend(ctx, chartWidth(ctx, "trade")), showlegend: !ui.tradeLabels || onFront.length > 1,
+    annotations: yw === "metric" ? offScale(r, out, ctx, m) : [],
+    xaxis: axis(ctx, Object.assign({ title: { text: customTitle(r, `trade:${view}:x`, axisTitle(r, xw)), font: { color: ctx.tok.ink } },
                                      type: logX ? "log" : "linear" }, logTicks(xs, logX))), yaxis,
-    uirevision: [runKey(r), m, ui.view, ui.ref, ui.logY, ui.outliers, logX, revision].join("|"),
-  }) };
+    uirevision: [runKey(r), m, view, ui.view, ui.ref, ui.logY, ui.outliers, logX, revision].join("|"),
+  }), front: onFront.length > 1 };
+}
+const SYMBOL_3D = s => { const open = /-open/.test(s || ""), b = /square/.test(s) ? "square" : /diamond/.test(s) ? "diamond" : /^x/.test(s) ? "x" : /cross/.test(s) ? "cross" : "circle";
+                         return open && ["circle", "square", "diamond"].includes(b) ? `${b}-open` : b; };
+function figTrade3d(r, ctx) {
+  // One point per policy at (CPU time, peak memory, final metric), its runs as a faint cloud, its 95% intervals as
+  // error bars and a dotted drop line to its shadow on the floor; rings mark the policies no other one beats on all three.
+  const m = ui.metric, vis = visible(r).map(p => p.label), S = styleMap(r, ctx.t);
+  const pts = r.policies.filter(p => vis.includes(p.label)).map(pol => ({ pol, c: axisValue(r, "cpu", pol.label), g: axisValue(r, "mem", pol.label),
+                                                                          f: axisValue(r, "metric", pol.label) }))
+    .filter(p => p.c && p.g && p.f && p.f.mean !== null);
+  if (!pts.length) return null;
+  const logC = spreadLog(pts.map(p => p.c.mean), ui.tradeLogX), logG = spreadLog(pts.map(p => p.g.mean), ui.tradeLogX);
+  const zs = pts.flatMap(p => [p.f.low ?? p.f.mean, p.f.high ?? p.f.mean]), zmin = Math.min(...zs), zmax = Math.max(...zs), pad = (zmax - zmin) * 0.06 || 1;
+  const floor = ui.logY ? Math.max(Math.min(...zs.filter(v => v > 0)) / 1.3, 1e-9) : zmin - pad;
+  const sz = higher(r, m) ? -1 : 1, data = [];
+  const dominated = p => pts.some(q => q !== p && q.c.mean <= p.c.mean && q.g.mean <= p.g.mean && sz * q.f.mean <= sz * p.f.mean
+                                   && (q.c.mean < p.c.mean || q.g.mean < p.g.mean || sz * q.f.mean < sz * p.f.mean));
+  const front = pts.filter(p => !dominated(p)), marked = front.length > 0 && front.length < pts.length;
+  for (const p of pts) {
+    const { pol, c, g, f } = p, onFront = marked && front.includes(p);
+    const color = S[pol.label].color, name = nameOf(r, pol.label), sym = SYMBOL_3D(S[pol.label].symbol);
+    const n = Math.min((c.values || []).length, (g.values || []).length, (f.values || []).length);
+    if (n > 1 && !ui.view.startsWith("per") && !ui.ref) data.push({ type: "scatter3d", mode: "markers", x: c.values.slice(0, n), y: g.values.slice(0, n), z: f.values.slice(0, n),
+      marker: { size: 2.6, color: mix(color, ctx.tok.surface, .5) }, showlegend: false, legendgroup: pol.label, hoverinfo: "skip", meta: pol.label });
+    // Solid tints rather than alpha: WebGL blends transparent 3D marks differently from one GPU to the next.
+    data.push({ type: "scatter3d", mode: "lines+markers", x: [c.mean, c.mean], y: [g.mean, g.mean], z: [floor, f.mean], showlegend: false, legendgroup: pol.label,
+      line: { color: mix(color, ctx.tok.surface, .4), width: 3, dash: "dot" }, marker: { size: [5, 0], color: mix(color, ctx.tok.surface, .6), symbol: "circle" },
+      hoverinfo: "skip", meta: pol.label });
+    data.push({ type: "scatter3d", mode: "markers", x: [c.mean], y: [g.mean], z: [f.mean], name, meta: pol.label, legendgroup: pol.label,
+      // A policy on the Pareto front wears an ink outline: one sprite per point, so no ring to clip or hide.
+      marker: { size: onFront ? 10 : 8, color, symbol: sym, line: onFront ? { color: ctx.tok.ink, width: 3 } : { color: ctx.tok.surface, width: 1 } },
+      error_x: { type: "data", symmetric: false, array: [c.high - c.mean], arrayminus: [c.mean - c.low], color, thickness: 2, width: 3 },
+      error_y: { type: "data", symmetric: false, array: [g.high - g.mean], arrayminus: [g.mean - g.low], color, thickness: 2, width: 3 },
+      error_z: { type: "data", symmetric: false, array: [f.high - f.mean], arrayminus: [f.mean - f.low], color, thickness: 2, width: 3 },
+      hovertemplate: `<b>${esc(name)}</b><br>CPU: %{x:.4~g} s<br>Memory: %{y:.4~g} MB<br>${esc(shortMetric(r))}: %{z:.4~g}<extra></extra>` });
+  }
+  // Legend key of the outline (the legend draws its symbols at a constant size; in the scene, the point is too small to see).
+  if (marked) data.push({ type: "scatter3d", mode: "markers", name: "Pareto front (outlined)", hoverinfo: "skip",
+    x: [front[0].c.mean], y: [front[0].g.mean], z: [front[0].f.mean], marker: { size: .1, color: ctx.tok.ink, symbol: "circle-open", line: { color: ctx.tok.ink, width: 2 } } });
+  const ax = (t, log, extra) => Object.assign({ title: { text: t, font: { color: ctx.tok.ink, size: ctx.font } }, type: log ? "log" : "linear",
+    gridcolor: ctx.tok.grid, zerolinecolor: ctx.tok.grid, linecolor: ctx.tok.axis, tickfont: { color: ctx.tok.ink2, size: ctx.font * .9 },
+    showbackground: true, backgroundcolor: mix(ctx.tok.surface, ctx.tok.ink, .035), showspikes: false }, extra || {});
+  const zr = ui.logY ? [Math.log10(floor), Math.log10(zmax * 1.1)] : [floor, zmax + pad];
+  // On a wide card the legend stands on the right, beside the cube, so the cube keeps the full height.
+  const box = chartWidth(ctx, "trade"), side = (ctx.exporting || box >= 760) && ui.legend !== "inside";
+  const leg = side ? Object.assign(legend(ctx, box), { orientation: "v", x: 1, xanchor: "right", y: .96, yanchor: "top", entrywidth: undefined, entrywidthmode: undefined })
+                   : legend(ctx, box);
+  return { front: marked, data, layout: Object.assign(base(ctx, `${shortMetric(r)}, CPU time and memory`, {
+    legend: leg, margin: { l: 0, r: 0, t: 30, b: 0 },
+    uirevision: [runKey(r), m, "3d", ui.view, ui.ref, ui.logY, logC, logG, revision].join("|"),
+  }), { scene: { xaxis: ax(axisTitle(r, "cpu"), logC, logTicks(pts.map(p => p.c.mean), logC)),
+                 yaxis: ax(axisTitle(r, "mem"), logG, logTicks(pts.map(p => p.g.mean), logG)),
+                 zaxis: ax(`${shortMetric(r)} at T`, ui.logY, Object.assign({ range: zr }, logTicks(zs, ui.logY))), aspectmode: "cube", dragmode: "turntable",
+                 domain: side ? { x: [0, ctx.exporting ? .72 : .8], y: [0, 1] } : { x: [0, 1], y: [0, 1] },
+                 camera: { eye: ctx.exporting ? { x: 1.6, y: 1.48, z: 0.86 } : { x: 1.38, y: 1.28, z: 0.74 }, center: { x: 0, y: 0, z: -0.16 } } } }) };
+}
+function spin3d(el, key) {
+  // When the 3D view first appears for a folder, the camera turns 35 degrees into place: the depth reads at once.
+  if (calm() || spin3d.done === key || !el._fullLayout || !el._fullLayout.scene) return;
+  spin3d.done = key;
+  let moved = false; el.once && el.once("plotly_relayouting", () => { moved = true; });
+  const e0 = { x: 1.38, y: 1.28, z: 0.74 }, rad = Math.hypot(e0.x, e0.y), a0 = Math.atan2(e0.y, e0.x), from = a0 + 0.62, t0 = performance.now(), dur = 1300;
+  const step = now => {
+    if (moved || !document.body.contains(el)) return;
+    const t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3), a = from + (a0 - from) * e;
+    Plotly.relayout(el, { "scene.camera.eye": { x: rad * Math.cos(a), y: rad * Math.sin(a), z: e0.z } });
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 function searchLabels(r) { return Object.keys(r.search || {}).filter(l => (r.search[l].rows || []).length); }
@@ -1454,9 +1498,9 @@ function renderMain() {
       <div class="top-tools">${r.command ? `<button class="btn ghost sm glass" id="copy" title="${esc(r.command)}">${icon("copy")}Copy rerun command</button>` : ""}
 <details class="dd wide right" data-for="style"><summary class="chip glass" title="Style and export">${icon("sliders")}<b>Style</b>${icon("chev", "chev")}</summary>
         <div class="menu-list style-box">
-          <p class="dd-group">Look</p>
-          <div class="row">${seg("look", LOOKS.map(([k, t]) => [k, t]), ui.look)}${seg("theme", [["auto", "Auto", "Follows the browser"], ["light", "Light"], ["dark", "Dark"]], ui.theme)}
-            ${ui.look === "navy" ? toggleChip("solid", "Solid surfaces", ui.solid) : ""}</div>
+          <p class="dd-group">Display</p>
+          <div class="row">${seg("theme", [["auto", "Auto", "Follows the browser"], ["light", "Light"], ["dark", "Dark"]], ui.theme)}
+            ${toggleChip("solid", "Solid surfaces", ui.solid)}</div>
           <p class="dd-group">Charts</p>
           <div class="row">
             <label class="field"><span class="lab">Palette</span><select id="palette">${Object.entries(PALETTES).map(([k, v]) =>
@@ -1486,9 +1530,9 @@ function renderMain() {
     <header class="head"><h1 title="${esc(r.folder || r.name)}">${esc(prettyName(r.name))}</h1>
       ${r.description ? `<p class="desc" title="${esc(r.description)}">${esc(r.description.split(/(?<=\.)\s+/)[0])}</p>` : ""}
       <ul class="specs">${specs.map(([k, v]) => `<li class="spec"><span>${esc(k)}</span><b>${esc(v)}</b></li>`).join("")}</ul></header>
-    ${notices.length ? `<details class="notices" id="notices" ${rs(r).noticesOpen === false ? "" : "open"}><summary>${icon("warn")}<span class="warn-word">WARNING</span>${icon("warn")}<span>${notices.length} point${notices.length > 1 ? "s" : ""} to know about this run</span>
+    ${notices.length ? `<details class="notices" id="notices" ${rs(r).noticesOpen === false ? "" : "open"}><summary>${icon("warn")}<span class="warn-word">WARNING</span>${icon("warn")}<span>${notices.length} caveat${notices.length > 1 ? "s" : ""} before comparing the policies</span>
       <span class="nt-tags">${notices.map(n => `<span class="badge">${esc(n.title)}</span>`).join("")}</span>${icon("chev", "chev")}</summary>
-      <div class="table-wrap"><table class="ntable"><thead><tr><th class="num">#</th><th>Point</th><th>Details</th><th>What to do</th></tr></thead><tbody>
+      <div class="table-wrap"><table class="ntable"><thead><tr><th class="num">#</th><th>Caveat</th><th>Details</th><th>What to do</th></tr></thead><tbody>
       ${notices.map((n, i) => `<tr><td class="num">${i + 1}</td><td class="nt-title">${esc(n.title)}</td><td>${esc(n.text)}</td><td class="nt-todo">${n.todo ? esc(n.todo) : "–"}</td></tr>`).join("")}
       </tbody></table></div></details>` : ""}
     <section class="kpis" id="kpis" aria-label="Key numbers"></section>
@@ -1505,9 +1549,9 @@ function renderMain() {
     ${chartCard("curve", "Learning curve", "", "", "hero")}
     <div class="grid2">
       ${chartCard("final", "Final values", "", `${seg("finalKind", [["box", "Box"], ["violin", "Violin"], ["dots", "Mean ± band"]], ui.finalKind, v => !multi && v !== "dots")}`, "short")}
-      ${chartCard("trade", "Cost against performance", "", `${seg("tradeLogX", [["auto", "Auto"], ["linear", "Linear"], ["log", "Log"]], ui.tradeLogX)}
-        ${toggleChip("tradeLabels", "Labels", ui.tradeLabels)}`, "short")}
     </div>
+    ${tradeViews(r).length ? chartCard("trade", "Trade-offs", "", `${tradeViews(r).length > 1 ? seg("tradeView", tradeViews(r), tradeView(r)) : ""}
+      ${seg("tradeLogX", [["auto", "Auto", "Cost axes: log scale when the values span a wide range"], ["linear", "Linear", "Cost axes: linear scale"], ["log", "Log", "Cost axes: log scale"]], ui.tradeLogX)}${tradeView(r) === "3d" ? "" : toggleChip("tradeLabels", "Labels", ui.tradeLabels)}`, "trade") : ""}
     ${chartCard("search", "Hyperparameter search", "", searchLabels(r).length > 1 ? `<select id="search-label" aria-label="Policy">${searchLabels(r).map(l =>
       `<option value="${esc(l)}" ${l === ui.searchLabel ? "selected" : ""}>${esc(nameOf(r, l))}</option>`).join("")}</select>` : "")}
     ${explainItems(r).length ? `<section class="panel card" id="card-explain"><div class="card-head"><h2 id="h-explain">Inside the policies</h2>
@@ -1655,13 +1699,14 @@ function drawExplain() {
 function drawCharts() {
   const r = run();
   if (!window.Plotly) {
-    for (const c of CHARTS) document.getElementById(c.id).innerHTML =
+    for (const c of CHARTS) if (document.getElementById(c.id)) document.getElementById(c.id).innerHTML =
       '<p class="note">Charts need plotly.js, loaded from the internet. Rebuild with <code>--offline</code> to embed it.</p>';
     return;
   }
   const ctx = ctxFor(false);
   for (const c of CHARTS) {
     const el = document.getElementById(c.id), card = document.getElementById("card-" + c.id);
+    if (!el || !card) continue;  // a card this folder has no data for is not on the page
     const fig = c.build(r, ctx);
     if (!fig) { card.hidden = true; Plotly.purge(el); continue; }
     card.hidden = false;
@@ -1670,6 +1715,7 @@ function drawCharts() {
     delete fig.layout.noYTitle;
     Plotly.react(el, fig.data, fig.layout, config);
     if (!el._bound) { bindChart(el, c.id); el._bound = true; }
+    if (c.id === "trade" && tradeView(r) === "3d") spin3d(el, runKey(r));
   }
   document.querySelectorAll(".grid2").forEach(g => {
     const single = [...g.children].filter(c => !c.hidden).length < 2;
@@ -1687,13 +1733,16 @@ function setCaption(id, r, fig) {
     final: n < 2 ? "One run: its final value per policy." : ui.finalKind === "dots" ?
       `Mean at the last step and its ${ui.band === "sd" ? "± 1 sd" : "95% CI"}.${ranked(r, m) ? " Best on top." : ""}` :
       `${n} runs at the last step. Box: quartiles. Dashed line: mean.${ranked(r, m) ? " Best on top." : ""}`,
-    trade: "CPU time per run against the final value (means, 95% CI). Dotted line: policies that no other one beats on both.",
+    trade: tradeView(r) === "3d"
+      ? `Means with their 95% CI. Small dots: the runs.${fig.front ? " Outlined: the Pareto front, no other policy beats them on all three." : ""} Drag to turn, scroll to zoom.`
+      : `Means with their 95% CI.${fig.front ? " Dotted line: the Pareto front, no other policy beats them on both." : ""}`,
     search: fig.caption ? `${fig.caption}. Other seeds than the reported runs. Outlined: the value kept.` : "",
   }[id];
   document.getElementById("c-" + id).textContent = text;
   if (id === "curve") { const f = document.getElementById("f-curve"), html = finding(r); f.innerHTML = html; f.hidden = !html; }
   const heads = { curve: `${yTitle(r, m)} over the steps`, final: `${yTitle(r, m)} at the last step`,
-                  trade: `${yTitle(r, m)} against CPU time`, search: "Hyperparameter search" };
+                  trade: { cpu: `${shortMetric(r)} against CPU time`, mem: `${shortMetric(r)} against peak memory`, cpu_mem: "CPU time against peak memory",
+                           "3d": `${shortMetric(r)}, CPU time and memory, in 3D` }[tradeView(r)] || "Trade-offs", search: "Hyperparameter search" };
   document.getElementById("h-" + id).textContent = heads[id];
 }
 function bindChart(el, id) {
@@ -1828,7 +1877,7 @@ function drawRail() {
   };
 }
 function drawDetails() {
-  const r = run(), m = ui.metric, st = rs(r), S = styleMap(r, theme()), hasCpu = !!r.final.cpu_time, rows = rankedRows(r, m);
+  const r = run(), m = ui.metric, st = rs(r), S = styleMap(r, theme()), hasCpu = !!r.final.cpu_time, hasMem = !!r.final.memory_mb, rows = rankedRows(r, m);
   const kept = pol => (pol.notes || []).filter(([kind]) => kind !== "from_problem");
   const key = ([kind, text]) => `${text.split(" (")[0]} (${kind})`;
   const shared = r.policies.length > 1 ? kept(r.policies[0]).map(key).filter(k => r.policies.every(q => kept(q).map(key).includes(k))) : [];
@@ -1837,12 +1886,12 @@ function drawDetails() {
   const searched = pol => pol.best_params && Object.keys(pol.best_params).length ? `<span class="badge info">searched: ${esc(
     Object.entries(pol.best_params).map(([k, v]) => `${k}=${fmtParam(v)}`).join(", "))}</span>` : "";
   const capEl = document.querySelector("#card-details .caption");
-  if (capEl) capEl.textContent = "Final values, CPU time and hyperparameters." + (shared.length ? ` Same for all policies: ${shared.join(", ")}.` : "");
+  if (capEl) capEl.textContent = `Final values, ${hasMem ? "CPU time, peak memory" : "CPU time"} and hyperparameters.` + (shared.length ? ` Same for all policies: ${shared.join(", ")}.` : "");
   const hasNotes = rows.some(({ pol }) => searched(pol) || notes(pol));
   let rank = 0;
   document.getElementById("table").innerHTML = `<table><thead><tr><th>Policy</th>
     ${ranked(r, m) ? '<th class="num">Rank</th>' : ""}<th class="num">${esc(yTitle(r, m))} at T</th><th class="num">${ui.band === "sd" ? "± 1 sd" : "95% CI"}</th>
-    ${hasCpu ? '<th class="num">CPU per run (s)</th>' : ""}<th>Hyperparameters (changed)</th>${hasNotes ? "<th>Notes</th>" : ""}</tr></thead>
+    ${hasCpu ? '<th class="num">CPU per run (s)</th>' : ""}${hasMem ? '<th class="num">Peak memory (MB)</th>' : ""}<th>Hyperparameters (changed)</th>${hasNotes ? "<th>Notes</th>" : ""}</tr></thead>
     <tbody>${rows.map(({ pol, f }) => {
       const off = st.hidden.includes(pol.label), c = hasCpu ? r.final.cpu_time[pol.label] : null;
       if (!off && f && f.mean !== null) rank++;
@@ -1850,6 +1899,7 @@ function drawDetails() {
       ${ranked(r, m) ? `<td class="num">${off || !f || f.mean === null ? "–" : rank}</td>` : ""}
       <td class="num">${f ? fmt(f.mean) : "–"}</td><td class="num">${f && totalRuns(r) > 1 ? `${fmt(f.low)} to ${fmt(f.high)}` : "–"}</td>
       ${hasCpu ? `<td class="num">${c ? fmt(c.mean) : "–"}</td>` : ""}
+      ${hasMem ? `<td class="num">${(r.final.memory_mb[pol.label] || {}).mean != null ? fmt(r.final.memory_mb[pol.label].mean) : "–"}</td>` : ""}
       <td class="params">${esc(Object.entries(pol.params || {}).map(([k, v]) => `${k}=${fmtParam(v)}`).join(", ") || "defaults")}</td>
       ${hasNotes ? `<td>${searched(pol)}${notes(pol)}</td>` : ""}</tr>`; }).join("")}</tbody></table>`;
 }
@@ -1915,7 +1965,14 @@ function csvOf(id) {
     return [["step", ...cols].map(q).join(","), ...r.steps.map((s, i) => [s, ...series.flatMap(x =>
       [g(x.mean[i]), x.low ? g(x.low[i]) : "", x.high ? g(x.high[i]) : ""])].join(","))].join("\n");
   }
-  if (id === "final" || id === "trade") {
+  if (id === "trade") {
+    const cols = ["policy", "metric_mean", "metric_low", "metric_high", "cpu_mean", "cpu_low", "cpu_high", "memory_mean", "memory_low", "memory_high"];
+    return [cols.map(q).join(","), ...vis.map(p => {
+      const f = finalOf(r, m, p.label) || {}, c = (r.final.cpu_time || {})[p.label] || {}, mm = (r.final.memory_mb || {})[p.label] || {};
+      return [q(nameOf(r, p.label)), g(f.mean), g(f.low), g(f.high), g(c.mean), g(c.low), g(c.high), g(mm.mean), g(mm.low), g(mm.high)].join(",");
+    })].join("\n");
+  }
+  if (id === "final") {
     return [["policy", "mean", "low", "high", "cpu_mean", "values"].map(q).join(","), ...vis.map(p => {
       const f = finalOf(r, m, p.label) || {}, c = (r.final.cpu_time || {})[p.label] || {};
       return [q(nameOf(r, p.label)), g(f.mean), g(f.low), g(f.high), g(c.mean), q((f.values || []).map(g).join(" "))].join(",");

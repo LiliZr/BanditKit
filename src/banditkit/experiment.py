@@ -404,7 +404,7 @@ class Experiment:
         return sorted(set(scalar)), sorted(set(per_action))
 
     def notices(self) -> List[Dict[str, str]]:
-        """What to know before reading the results of this run: one ``{"key", "title", "text", "todo"}`` per point.
+        """What to know before reading the results of this run: one ``{"key", "title", "text", "todo"}`` per caveat.
 
         ``text`` says what happens, in one or two short sentences; ``todo`` says how to change it (empty when
         there is nothing to do). Printed as a numbered warning when the run starts (``verbose >= 1``) and
@@ -503,8 +503,8 @@ class Experiment:
             k = self.log_interval
             how = (f"You set log_interval={k}." if self._log_interval_given
                    else f"Default: T // 5000 = {self.horizon} // 5000 = {k}.")
-            add("log_interval", f"One point every {k} steps",
-                f"Between two stored points, the curve is drawn, not measured. {how}",
+            add("log_interval", f"Curves stored every {k} steps",
+                f"Between two stored steps, the curve is drawn, not measured. {how}",
                 "log_interval=1 keeps every step (larger files).")
         if self.timeout is not None:
             add("timeout", "Timeout", f"A run stops after {_fmt(self.timeout)} s of policy CPU time. "
@@ -526,7 +526,7 @@ class Experiment:
     def _say_plan(self) -> None:
         where = f" on {self.n_instances} instances" if self.n_instances > 1 else ""
         runs = f"{self.n_runs} run" + ("s" if self.n_runs > 1 else "")
-        _say(f"banditkit: {len(self.policies)} policies, {runs}{where}, horizon {self.horizon}.")
+        _say(f"BanditKit: {len(self.policies)} policies, {runs}{where}, horizon {self.horizon}.")
         notices = getattr(self, "_notices_at_start", None) or self.notices()
         if notices:
             _say(_format_notices(notices))
@@ -673,13 +673,13 @@ def _banner(text: str, stream: Any = None) -> str:
 
 
 def _format_notices(notices: List[Dict[str, str]], stream: Any = None) -> str:
-    """The numbered warning: a band, then one aligned paragraph per point."""
+    """The numbered warning: a band, then one aligned paragraph per caveat."""
     import textwrap
 
     width = _width()
     color = _use_color(stream if stream is not None else sys.stderr)
     n = len(notices)
-    lines = [_banner(f"{WARNING_TITLE}  {n} point{'s' if n > 1 else ''} to know about this run", stream)]
+    lines = [_banner(f"{WARNING_TITLE}  {n} caveat{'s' if n > 1 else ''} before comparing the policies", stream)]
     pad = len(f" {n}) ")
     for i, notice in enumerate(notices, start=1):
         head = f" {i}) ".rjust(pad)

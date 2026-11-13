@@ -38,6 +38,7 @@
     "log_interval": 50,
     "track": [
       "clusters"
-    ]
+    ],
+    "measure_memory": true
   }
 }

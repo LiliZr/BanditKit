@@ -1,11 +1,61 @@
 {
   "description": "Same kind of linear problem, smaller (200 actions in R^10, 5 instances, 4 runs each). LinUCB and LinTS with theoretical values, then with the best alpha and lambda found on other seeds.",
-  "env": {"kind": "linear", "n_instances": 5, "n_actions": 200, "n_features": 10, "noise_std": 0.1, "seed": 1},
+  "env": {
+    "kind": "linear",
+    "n_instances": 5,
+    "n_actions": 200,
+    "n_features": 10,
+    "noise_std": 0.1,
+    "seed": 1
+  },
   "policies": [
-    {"policy": "LinUCB"}, {"policy": "LinTS"},
-    {"policy": "LinUCB", "label": "LinUCB searched"}, {"policy": "LinTS", "label": "LinTS searched"}
+    {
+      "policy": "LinUCB"
+    },
+    {
+      "policy": "LinTS"
+    },
+    {
+      "policy": "LinUCB",
+      "label": "LinUCB searched"
+    },
+    {
+      "policy": "LinTS",
+      "label": "LinTS searched"
+    }
   ],
-  "experiment": {"horizon": 2000, "n_runs": 4, "seed": 0, "log_interval": 10, "search_runs": 2,
-                 "param_grid": {"LinUCB searched": {"alpha": [0.01, 0.1, 1.0], "lambda_": [0.01, 0.1, 1.0]},
-                                "LinTS searched": {"alpha": [0.01, 0.1, 1.0], "lambda_": [0.01, 0.1, 1.0]}}}
+  "experiment": {
+    "horizon": 2000,
+    "n_runs": 4,
+    "seed": 0,
+    "log_interval": 10,
+    "search_runs": 2,
+    "param_grid": {
+      "LinUCB searched": {
+        "alpha": [
+          0.01,
+          0.1,
+          1.0
+        ],
+        "lambda_": [
+          0.01,
+          0.1,
+          1.0
+        ]
+      },
+      "LinTS searched": {
+        "alpha": [
+          0.01,
+          0.1,
+          1.0
+        ],
+        "lambda_": [
+          0.01,
+          0.1,
+          1.0
+        ]
+      }
+    },
+    "measure_memory": true
+  }
 }

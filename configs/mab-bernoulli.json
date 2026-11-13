@@ -37,6 +37,7 @@
     "log_interval": 50,
     "track": [
       "pseudo_regret"
-    ]
+    ],
+    "measure_memory": true
   }
 }

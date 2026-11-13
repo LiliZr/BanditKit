@@ -43,6 +43,7 @@
     "horizon": 3000,
     "n_runs": 2,
     "seed": 0,
-    "log_interval": 15
+    "log_interval": 15,
+    "measure_memory": true
   }
 }
