@@ -34,7 +34,8 @@ def _go():
 def _style(fig, title: str, x_title: str = "", y_title: str = "", height: int = 420):
     """Shared layout: left-aligned title, light grid, legend below the plot (above it in animated figures)."""
     animated = bool(fig.layout.sliders)
-    legend = dict(orientation="h", x=0, y=1.0, yanchor="bottom") if animated else dict(orientation="h", y=-0.18)
+    legend = dict(orientation="h", x=0, y=1.0, yanchor="bottom", itemsizing="constant") if animated \
+        else dict(orientation="h", y=-0.18, itemsizing="constant")
     fig.update_layout(title=dict(text=title, x=0.01, font=dict(size=15, color=INK)), template="plotly_white",
                       height=height, margin=dict(l=60, r=20, t=90 if animated else 60, b=130 if animated else 50),
                       legend=legend,
@@ -44,6 +45,21 @@ def _style(fig, title: str, x_title: str = "", y_title: str = "", height: int = 
     fig.update_xaxes(title=x_title, gridcolor=GRID, linecolor=GRID, zeroline=False)
     fig.update_yaxes(title=y_title, gridcolor=GRID, linecolor=GRID, zeroline=False)
     return fig
+
+
+SYMBOLS = ("circle", "square", "diamond", "triangle-up", "triangle-down", "cross", "x", "star", "pentagon", "hexagon")
+
+
+def _marks(x, i: int, n: int, size: int = 8, count: int = 10) -> dict:
+    """Markers of the i-th of n lines: about ``count`` per line, evenly spread, shifted from line to line."""
+    x = np.asarray(x, dtype=float)
+    sizes = np.zeros(x.size)
+    if x.size:
+        lo, hi = float(np.nanmin(x)), float(np.nanmax(x))
+        step = (hi - lo) / count if hi > lo else 1.0
+        targets = lo + step * (np.arange(count) + (i % max(n, 1) + 0.5) / max(n, 1))
+        sizes[np.unique(np.abs(x[None, :] - targets[:, None]).argmin(axis=1))] = size
+    return dict(size=sizes, symbol=SYMBOLS[i % len(SYMBOLS)])
 
 
 def _rgba(hex_color: str, alpha: float) -> str:
@@ -171,14 +187,15 @@ def estimates(trace, show_bonus: bool = False):
     bonus, truth = trace.snapshots.get("bonus") if show_bonus else None, _true_means(trace)
     fig = go.Figure()
     shown = _most_played(trace, 6)
-    for arm in shown:
+    for i, arm in enumerate(shown):
         color = _arm_color(trace, arm)
         if bonus is not None:
             upper = np.where(np.isfinite(bonus[:, arm]), mean[:, arm] + bonus[:, arm], np.nan)
             fig.add_scatter(x=steps, y=upper, mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip")
             fig.add_scatter(x=steps, y=mean[:, arm], mode="lines", line=dict(width=0), fill="tonexty",
                             fillcolor=_rgba(color, 0.15), showlegend=False, hoverinfo="skip")
-        fig.add_scatter(x=steps, y=mean[:, arm], mode="lines", name=_arm_name(trace, arm), line=dict(color=color, width=2))
+        fig.add_scatter(x=steps, y=mean[:, arm], mode="lines+markers", name=_arm_name(trace, arm),
+                        line=dict(color=color, width=2), marker=dict(color=color, **_marks(steps, i, len(shown))))
         if truth is not None:
             fig.add_hline(y=float(truth[arm]), line=dict(color=color, width=1, dash="dot"))
     # Legend keys for the two encodings shared by all arms.
@@ -276,9 +293,11 @@ def prob_best(trace, n_samples: int = 4000, seed: int = 0):
             draws = trace.snapshots["posterior_mean"][i] + trace.snapshots["posterior_std"][i] * rng.standard_normal((n_samples, K))
         probs[i] = np.bincount(draws.argmax(axis=1), minlength=K) / n_samples
     fig = go.Figure()
-    for arm in _most_played(trace):
-        fig.add_scatter(x=trace.snapshot_steps, y=probs[:, arm], mode="lines", name=_arm_name(trace, arm),
-                        line=dict(color=_arm_color(trace, arm), width=2))
+    shown = _most_played(trace)
+    for i, arm in enumerate(shown):
+        color = _arm_color(trace, arm)
+        fig.add_scatter(x=trace.snapshot_steps, y=probs[:, arm], mode="lines+markers", name=_arm_name(trace, arm),
+                        line=dict(color=color, width=2), marker=dict(color=color, **_marks(trace.snapshot_steps, i, len(shown))))
     fig.update_yaxes(tickformat=".0%", range=[0, 1.02])
     return _style(fig, f"{trace.label} · Probability of being the best arm", "Round", "Probability")
 
@@ -457,7 +476,8 @@ def clusters(traces: Sequence, n_true_groups: int = None):
             fig.add_scatter(x=np.r_[steps, steps[::-1]], y=np.r_[mean + std, (mean - std)[::-1]], fill="toself",
                             mode="lines", line=dict(width=0), fillcolor=_rgba(color, 0.15), hoverinfo="skip",
                             showlegend=False)
-        fig.add_scatter(x=steps, y=mean, mode="lines", name=label + _runs_suffix(runs), line=dict(color=color, width=2))
+        fig.add_scatter(x=steps, y=mean, mode="lines+markers", name=label + _runs_suffix(runs),
+                        line=dict(color=color, width=2), marker=dict(color=color, **_marks(steps, j, len(by_label))))
     if n_true_groups is not None:
         fig.add_hline(y=n_true_groups, line=dict(color=INK_SECONDARY, width=1, dash="dot"),
                       annotation_text="True groups", annotation_position="top left")

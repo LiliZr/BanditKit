@@ -162,6 +162,7 @@ const PALETTES = {
   gray: { name: "Grayscale (print)" },
 };
 const DASHES = ["solid", "dash", "dot", "dashdot", "longdash", "longdashdot"];
+const SYMBOL_POOL = ["circle", "square", "triangle-up", "diamond", "triangle-down", "cross", "x", "star", "hexagon", "pentagon"];
 const TOKENS = {
   light: { ink: "#14181d", ink2: "#56606b", ink3: "#87909a", grid: "#e9ecf0", axis: "#9aa3ad", surface: "#ffffff" },
   dark: { ink: "#e6e9ee", ink2: "#a3acb6", ink3: "#6f7882", grid: "#252c34", axis: "#4f5963", surface: "#161b21" },
@@ -176,12 +177,13 @@ const store = {
 };
 const DEFAULT_UI = {
   metric: "regret", view: "cumulative", band: "ci", logX: false, logY: false, outliers: "crop", factor: 4, ref: "",
-  palette: "banditkit", lines: "technique", markers: false, width: 2, font: 12, legend: "top", theme: "auto",
+  palette: "banditkit", lines: "technique", markers: true, width: 2, font: 12, legend: "top", theme: "auto", uiVersion: 2,
   finalKind: "box", tradeLogX: "auto", tradeLabels: false, searchLabel: "",
   export: { w: 6.4, h: 4, dpi: 300, font: 10, family: "sans", background: "white", title: false },
 };
 const ui = Object.assign({}, DEFAULT_UI, store.get("ui", {}));
 ui.export = Object.assign({}, DEFAULT_UI.export, ui.export || {});
+if (ui.uiVersion !== DEFAULT_UI.uiVersion) Object.assign(ui, { markers: true, uiVersion: DEFAULT_UI.uiVersion });  // markers on by default
 const perRun = store.get("runs", {});
 let current = null, revision = 0;
 const save = () => { store.set("ui", ui); store.set("runs", perRun); };
@@ -272,6 +274,21 @@ function dashOf(r, pol, i) {
   return ui.lines === "technique" ? (pol.dash || "solid") : "solid";
 }
 const markersOn = () => ui.markers || ui.palette === "gray";
+function markerSizes(x, i, n, logX, size) {
+  // About 10 markers per line, evenly spread along the x axis as drawn (log or linear), shifted from one
+  // policy to the next so that markers of close curves do not pile up. Other points get size 0.
+  const count = 10, pos = x.map(v => logX ? (v > 0 ? Math.log10(v) : NaN) : v), sizes = new Array(x.length).fill(0);
+  const ok = pos.filter(v => isFinite(v)), lo = Math.min(...ok), hi = Math.max(...ok);
+  if (!ok.length || !(hi > lo)) return sizes.fill(size);
+  const step = (hi - lo) / count, shift = step * ((i % Math.max(n, 1)) + 0.5) / Math.max(n, 1);
+  for (let k = 0; k < count; k++) {
+    const target = lo + shift + k * step;
+    let best = -1, gap = Infinity;
+    pos.forEach((v, j) => { const d = Math.abs(v - target); if (d < gap) { gap = d; best = j; } });
+    if (best >= 0) sizes[best] = size;
+  }
+  return sizes;
+}
 function styleMap(r, t) {
   // One (color, dash) pair per policy: a repeated pair gets the next dash; dashed lines get hollow markers.
   const used = new Set(), out = {};
@@ -280,7 +297,8 @@ function styleMap(r, t) {
     let dash = dashOf(r, pol, i), k = Math.max(0, DASHES.indexOf(dash)), tries = 0;
     while (used.has(color + dash) && tries++ < DASHES.length) { k++; dash = DASHES[k % DASHES.length]; }
     used.add(color + dash);
-    const symbol = pol.symbol || "circle";
+    // In grayscale, color no longer tells policies apart: each one gets its own marker.
+    const symbol = ui.palette === "gray" ? SYMBOL_POOL[i % SYMBOL_POOL.length] : (pol.symbol || "circle");
     out[pol.label] = { color, dash, symbol: dash !== "solid" && !symbol.endsWith("-open") ? symbol + "-open" : symbol };
   });
   return out;
@@ -354,7 +372,7 @@ function legend(ctx) {
                 right: { orientation: "v", x: 1.02, xanchor: "left", y: 1, yanchor: "top" },
                 inside: { orientation: "v", x: 0.01, xanchor: "left", y: 0.99, yanchor: "top",
                           bgcolor: rgba(ctx.tok.surface, 0.8), bordercolor: ctx.tok.grid, borderwidth: 1 } }[ui.legend];
-  return Object.assign({ font: { color: ctx.tok.ink }, itemclick: "toggle", itemdoubleclick: "toggleothers" }, pos);
+  return Object.assign({ font: { color: ctx.tok.ink }, itemclick: "toggle", itemdoubleclick: "toggleothers", itemsizing: "constant" }, pos);
 }
 function base(ctx, figTitle, extra) {
   const bg = ctx.exporting ? (ui.export.background === "transparent" ? "rgba(0,0,0,0)" : "#ffffff") : "rgba(0,0,0,0)";
@@ -408,7 +426,8 @@ function figCurve(r, ctx) {
     }
     data.push({ x: s.x, y: s.mean, mode: markersOn() ? "lines+markers" : "lines", name, meta: pol.label, legendgroup: pol.label,
                 visible: off ? "legendonly" : true, line: { color, width: ui.width, dash: S[pol.label].dash },
-                marker: { color, size: 7, symbol: S[pol.label].symbol, maxdisplayed: 14 },
+                marker: { color, size: markerSizes(s.x, i, r.policies.length, ui.logX, 8), symbol: S[pol.label].symbol,
+                          line: { color, width: 1.5 } },
                 hovertemplate: `${esc(name)}: %{y:.4~g}<extra></extra>` });
     if (!off && !out.has(pol.label)) kept.push(...s.mean, ...(s.low || []), ...(s.high || []));
   });
