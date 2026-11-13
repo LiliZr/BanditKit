@@ -211,7 +211,7 @@ def test_launch_warning_adapts_to_the_settings(capsys, monkeypatch):
     res = bk.Experiment(env, [bk.UCB1(), bk.Random()], horizon=5, seed=0, log_interval=2).run()
     err = capsys.readouterr().err
     assert WARNING_TITLE in err and "\033[" not in err  # NO_COLOR: two rules instead of a colored band
-    assert " 1) Default hyperparameters. UCB1 keeps" in err and "param_grid=True" in err
+    assert " 1) Default hyperparameters. Values of the papers: UCB1 alpha=1." in err and "param_grid=True" in err
     assert "Not stored" in err and 'track "pseudo_regret"' in err and "One run" in err and "log_interval=2" in err
     assert "UCB1: default alpha=1" in err
     keys = [n["key"] for n in res.meta["notices"]]  # kept with the results (the dashboard shows them)

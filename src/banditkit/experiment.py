@@ -81,7 +81,7 @@ class Experiment:
         Parallel processes (1: sequential, -1: all CPUs), as in scikit-learn.
     log_interval : int, optional
         Curves are recorded every ``log_interval`` steps and at the last step
-        (default: about 2000 points per curve).
+        (default: T // 5000, about 5000 points per curve). Values at these steps are exact.
     timeout : float, optional
         Seconds of policy CPU time after which a run stops; its curve is NaN after that.
     train_freq : int
@@ -137,7 +137,8 @@ class Experiment:
         self.n_jobs = check_int("n_jobs", n_jobs, low=-1)
         if self.n_jobs == 0:
             raise ValueError("`n_jobs` must be >= 1, or -1 for all CPUs.")
-        self.log_interval = check_int("log_interval", log_interval, low=1, allow_none=True) or max(1, self.horizon // 2000)
+        self._log_interval_given = log_interval is not None
+        self.log_interval = check_int("log_interval", log_interval, low=1, allow_none=True) or max(1, self.horizon // 5000)
         self.timeout = check_float("timeout", timeout, low=0.0, low_inclusive=False, allow_none=True)
         self.train_freq = check_int("train_freq", train_freq, low=1)
         self.track = tuple(track)
@@ -414,17 +415,23 @@ class Experiment:
             out.append({"key": key, "title": title, "text": text})
 
         grids = self._grids or {}
-        defaults = {label: v for label, v in self._defaults_in_use().items() if not grids.get(label)}
+        defaults = {}
+        for label, (cls, params) in self._defaults_in_use().items():
+            arbitrary = {text.split("=", 1)[0] for kind, text in self._notes.get(label, []) if kind == "arbitrary"}
+            kept = {k: v for k, v in params.items() if k not in arbitrary}  # arbitrary values are listed below
+            if kept and not grids.get(label):
+                defaults[label] = (cls, kept)
         if defaults:
             cls, params = next(iter(defaults.values()))
             key = next(iter(params))
             example = f"{cls}({key}={_fmt(_EXAMPLE_VALUES.get(key, params[key]))})"
+            values = ", ".join(f"{label} {' '.join(f'{k}={_fmt(v)}' for k, v in p.items())}"
+                               for label, (_, p) in defaults.items())
             add("defaults", "Default hyperparameters",
-                f"{_list(list(defaults))} {'keeps' if len(defaults) == 1 else 'keep'} the values of "
-                f"{'its paper' if len(defaults) == 1 else 'their papers'} (alpha=1: theoretical confidence "
-                "bounds). These values are safe in theory but often explore too much in practice. To fit them "
-                "to this problem, run a grid search (param_grid=True, or \"param_grid\": true in a config file) "
-                f"or set them, e.g. {example}.")
+                f"Values of the papers: {values}. They give the theoretical confidence bounds: safe in theory, "
+                "but they often explore too much in practice. To fit them to this problem, run a grid search "
+                "(param_grid=True, or \"param_grid\": true in a config file) or set them, "
+                f"e.g. {example}.")
         searched = {label: g for label, g in grids.items() if g}
         if searched:
             n = sum(int(np.prod([len(v) for v in g.values()])) for g in searched.values())
@@ -443,6 +450,20 @@ class Experiment:
                 + "; ".join(f"{text} for {_list(labels)}" for text, labels in assumed.items())
                 + ". Pass the true values to the policies if you know them (help(policy) lists the parameters).")
 
+        bucketed = [label for label, p in self.policies.items() if p.get_params().get("n_buckets")]
+        if bucketed:
+            add("buckets", "Arm buckets (heuristic)",
+                f"{_list(bucketed)} {_verb(bucketed, 'sorts', 'sort')} the actions by estimated mean and {_verb(bucketed, 'cuts', 'cut')} them into n_buckets buckets, rebuilt "
+                "after bucket_rebuild_freq updates. A step compares the best action of each bucket, then searches "
+                "the chosen bucket only. This is faster on many actions, but it can miss the action the policy "
+                "without buckets would play, and the regret bound of its paper no longer holds.")
+        kmeans = [label for label, p in self.policies.items() if p.get_params().get("user_model") == "kmeans"]
+        if kmeans:
+            add("kmeans", "k-means users (heuristic)",
+                f"{_list(kmeans)} {_verb(kmeans, 'keeps', 'keep')} one model per user and {_verb(kmeans, 'pulls', 'pull')} its estimate towards the centroid of its "
+                "cluster, with weight n_u / (n_u + cluster size). The clusters come from a k-means on the user "
+                "estimates (n_user_clusters clusters, recomputed every user_recluster_freq steps). This shares "
+                "what similar users learned, without a regret guarantee.")
         missing = []
         if "pseudo_regret" not in self.track:
             missing.append('pseudo-regret (track "pseudo_regret")')
@@ -479,9 +500,13 @@ class Experiment:
         elif total < 5:
             add("runs", "Few runs", f"{total} runs per policy: confidence intervals are wide. Increase n_runs.")
         if self.log_interval > 1:
-            add("log_interval", "Curves thinned",
-                f"Curves are stored every {self.log_interval} steps (log_interval={self.log_interval}) "
-                "and at the last step.")
+            k = self.log_interval
+            how = (f"log_interval={k}" if self._log_interval_given
+                   else f"log_interval={k}: by default T // 5000 = {self.horizon} // 5000, about 5000 points per run")
+            add("log_interval", f"One point every {k} steps",
+                f"Curves keep one point every {k} steps and the last step ({how}). The values at these points are "
+                "exact. Between two points, the charts draw a straight line: there the curve is interpolated, "
+                "not measured. log_interval=1 keeps every step (larger files).")
         if self.timeout is not None:
             add("timeout", "Timeout", f"A run stops after {_fmt(self.timeout)} s of policy CPU time; its curves "
                                       "are NaN after that.")
@@ -666,7 +691,11 @@ def _format_notices(notices: List[Dict[str, str]], stream: Any = None) -> str:
     return "\n".join(lines)
 
 
-def _list(labels: List[str], limit: int = 6) -> str:
+def _verb(items: List[str], one: str, several: str) -> str:
+    return one if len(items) == 1 else several
+
+
+def _list(labels: List[str], limit: int = 8) -> str:
     """'A, B and C' (at most ``limit`` names)."""
     if len(labels) > limit:
         return ", ".join(labels[:limit]) + f" and {len(labels) - limit} more"
