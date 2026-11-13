@@ -1,10 +1,44 @@
 {
-  "description": "Linear bandit: 10 instances (1000 actions and theta uniform on the unit sphere of R^20, noise 0.1), 2 runs each. Plain LinUCB against its efficient variants and sketched bandits. Theoretical defaults.",
-  "env": {"kind": "linear", "n_instances": 10, "n_actions": 1000, "n_features": 20, "noise_std": 0.1, "seed": 0},
+  "description": "Linear bandit: 10 instances (1000 actions and theta uniform on the unit sphere of R^20, noise 0.1), 2 runs each. LinUCB and ConfidenceBall1 against random projections (LinUCB_RP, CBRAP), sketches (SOFUL, CBSCFD) and LinTS. Theoretical defaults.",
+  "env": {
+    "kind": "linear",
+    "n_instances": 10,
+    "n_actions": 1000,
+    "n_features": 20,
+    "noise_std": 0.1,
+    "seed": 0
+  },
   "policies": [
-    {"policy": "LinUCB"}, {"policy": "LinUCB", "n_buckets": "sqrt"}, {"policy": "LinUCB", "n_components": 10},
-    {"policy": "CBRAP", "n_components": 10}, {"policy": "SOFUL", "sketch_size": 10},
-    {"policy": "CBSCFD", "sketch_size": 10}, {"policy": "LinTS"}
+    {
+      "policy": "LinUCB"
+    },
+    {
+      "policy": "ConfidenceBall1"
+    },
+    {
+      "policy": "LinUCB",
+      "n_components": 10
+    },
+    {
+      "policy": "CBRAP",
+      "n_components": 10
+    },
+    {
+      "policy": "SOFUL",
+      "sketch_size": 10
+    },
+    {
+      "policy": "CBSCFD",
+      "sketch_size": 10
+    },
+    {
+      "policy": "LinTS"
+    }
   ],
-  "experiment": {"horizon": 3000, "n_runs": 2, "seed": 0, "log_interval": 15}
+  "experiment": {
+    "horizon": 3000,
+    "n_runs": 2,
+    "seed": 0,
+    "log_interval": 15
+  }
 }

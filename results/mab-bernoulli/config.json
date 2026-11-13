@@ -34,6 +34,9 @@
     "horizon": 10000,
     "n_runs": 2,
     "seed": 0,
-    "log_interval": 50
+    "log_interval": 50,
+    "track": [
+      "pseudo_regret"
+    ]
   }
 }
