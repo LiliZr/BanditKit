@@ -425,53 +425,53 @@ class Experiment:
             cls, params = next(iter(defaults.values()))
             key = next(iter(params))
             example = f"{cls}({key}={_fmt(_EXAMPLE_VALUES.get(key, params[key]))})"
-            values = ", ".join(f"{label} {' '.join(f'{k}={_fmt(v)}' for k, v in p.items())}"
-                               for label, (_, p) in defaults.items())
+            groups: Dict[str, List[str]] = {}  # same values, one group: "alpha=1 for UCB1 and KL-UCB"
+            for label, (_, p) in defaults.items():
+                groups.setdefault(" ".join(f"{k}={_fmt(v)}" for k, v in p.items()), []).append(label)
+            values = "; ".join(f"{v} for {_list(labels)}" for v, labels in groups.items())
             add("defaults", "Default hyperparameters",
-                f"Values of the papers: {values}. They give the theoretical confidence bounds: safe in theory, "
-                "but they often explore too much in practice. To fit them to this problem, run a grid search "
-                "(param_grid=True, or \"param_grid\": true in a config file) or set them, "
-                f"e.g. {example}.")
+                f"{values}. These are the values of the papers. They are safe in theory but often explore too much. "
+                "To tune them, run a grid search: param_grid=True (\"param_grid\": true in a config file). "
+                f"Or set them yourself, e.g. {example}.")
         searched = {label: g for label, g in grids.items() if g}
         if searched:
             n = sum(int(np.prod([len(v) for v in g.values()])) for g in searched.values())
             add("search", "Grid search",
-                f"{_list(list(searched))}: {n} combinations run {self.search_runs} time(s) per instance before the "
-                f"reported runs (criterion: final {self.search_metric}). The values found fit this problem only: "
-                "report them as such.")
+                f"{_list(list(searched))}: {n} combinations tried before the reported runs "
+                f"({self.search_runs} run(s) each, other seeds). The best final {self.search_metric} is kept. "
+                "These values fit this problem only.")
         assumed: Dict[str, List[str]] = {}
         for label, notes in self._notes.items():
             for kind, text in notes:
                 if kind == "assumed":
-                    assumed.setdefault(text, []).append(label)
+                    assumed.setdefault(text.split(" (")[0], []).append(label)
         if assumed:
             add("assumed", "Assumed constants",
-                "The environment does not give them: "
-                + "; ".join(f"{text} for {_list(labels)}" for text, labels in assumed.items())
-                + ". Pass the true values to the policies if you know them (help(policy) lists the parameters).")
+                "The problem does not give them, so the policies assume "
+                + "; ".join(f"{text.split(': ')[-1]} ({text.split(':')[0]}, for {_list(labels)})"
+                            for text, labels in assumed.items())
+                + ". If you know the true values, pass them to the policies.")
 
         bucketed = [label for label, p in self.policies.items() if p.get_params().get("n_buckets")]
         if bucketed:
             add("buckets", "Arm buckets (heuristic)",
-                f"{_list(bucketed)} {_verb(bucketed, 'sorts', 'sort')} the actions by estimated mean and {_verb(bucketed, 'cuts', 'cut')} them into n_buckets buckets, rebuilt "
-                "after bucket_rebuild_freq updates. A step compares the best action of each bucket, then searches "
-                "the chosen bucket only. This is faster on many actions, but it can miss the action the policy "
-                "without buckets would play, and the regret bound of its paper no longer holds.")
+                f"{_list(bucketed)} {_verb(bucketed, 'groups', 'group')} the actions into n_buckets buckets by estimated "
+                "mean. Each step picks one bucket and searches only that bucket. This is faster with many actions. "
+                "But it can miss the best action, and the regret bound of the paper no longer holds.")
         kmeans = [label for label, p in self.policies.items() if p.get_params().get("user_model") == "kmeans"]
         if kmeans:
             add("kmeans", "k-means users (heuristic)",
-                f"{_list(kmeans)} {_verb(kmeans, 'keeps', 'keep')} one model per user and {_verb(kmeans, 'pulls', 'pull')} its estimate towards the centroid of its "
-                "cluster, with weight n_u / (n_u + cluster size). The clusters come from a k-means on the user "
-                "estimates (n_user_clusters clusters, recomputed every user_recluster_freq steps). This shares "
-                "what similar users learned, without a regret guarantee.")
+                f"{_list(kmeans)} {_verb(kmeans, 'groups', 'group')} similar users with a k-means "
+                "(n_user_clusters clusters). Each user model is pulled towards its cluster. "
+                "This shares what similar users learned, but there is no regret guarantee.")
         missing = []
         if "pseudo_regret" not in self.track:
-            missing.append('pseudo-regret (track "pseudo_regret")')
+            missing.append('pseudo-regret ("pseudo_regret")')
         if self.spec.reward_dim > 1:
             for name, what in (("pareto_regret", "Pareto regret"), ("pareto_share", "share of Pareto-optimal pulls"),
                                ("unfairness", "unfairness"), ("reward_vec", "reward per objective")):
                 if name not in self.track:
-                    missing.append(f'{what} (track "{name}")')
+                    missing.append(f'{what} ("{name}")')
         scalar, per_action = self._diagnostic_keys()
         # Diagnostics that cannot change on this problem: clusters of a single user, buckets nobody uses.
         if (self.spec.n_users or 1) <= 1:
@@ -479,49 +479,47 @@ class Experiment:
         if not any(p.get_params().get("n_buckets") for p in self.policies.values()):
             scalar = [k for k in scalar if k != "n_buckets"]
         if scalar and "clusters" not in self.track:
-            missing.append(f'{", ".join(scalar)} over time (track "clusters")')
+            missing.append(f'{" and ".join(scalar)} over time ("clusters")')
         if per_action and "estimates" not in self.track:
-            missing.append('per-action estimates (track "estimates")')
+            missing.append('per-action estimates ("estimates")')
         if "actions" not in self.track:
-            missing.append('action of every step (track "actions")')
+            missing.append('action of every step ("actions")')
         if not self.measure_memory:
             missing.append("peak memory (measure_memory=True)")
         if missing:
-            text = "; ".join(missing)
+            text = ", ".join(missing)
             add("not_stored", "Not stored",
-                f"{text[0].upper() + text[1:]}. The dashboard and the figures cannot show what is not stored; "
-                "the brackets say how to store it (in a config file: \"track\": [...] or \"measure_memory\": true "
-                "in \"experiment\").")
+                f"{text[0].upper() + text[1:]}. The charts cannot show them. The brackets say how to store each one: "
+                "a quoted name goes in track (\"track\": [...] in a config file).")
 
         total = self.n_runs * self.n_instances
         if total == 1:
-            add("runs", "One run", "One run per policy: no confidence interval and no spread across runs. "
-                                   "Increase n_runs, or give several instances.")
+            add("runs", "One run", "One run per policy, so there is no confidence interval. "
+                                   "Increase n_runs, or use several instances.")
         elif total < 5:
-            add("runs", "Few runs", f"{total} runs per policy: confidence intervals are wide. Increase n_runs.")
+            add("runs", "Few runs", f"Only {total} runs per policy, so the confidence intervals are wide. Increase n_runs.")
         if self.log_interval > 1:
             k = self.log_interval
-            how = (f"log_interval={k}" if self._log_interval_given
-                   else f"log_interval={k}: by default T // 5000 = {self.horizon} // 5000, about 5000 points per run")
+            how = (f"You set log_interval={k}." if self._log_interval_given
+                   else f"By default, log_interval = T // 5000 = {self.horizon} // 5000 = {k} (about 5000 points per run).")
             add("log_interval", f"One point every {k} steps",
-                f"Curves keep one point every {k} steps and the last step ({how}). The values at these points are "
-                "exact. Between two points, the charts draw a straight line: there the curve is interpolated, "
-                "not measured. log_interval=1 keeps every step (larger files).")
+                f"Curves keep one point every {k} steps, plus the last step. Between two points, the line is drawn, "
+                f"not measured. {how} log_interval=1 keeps every step (larger files).")
         if self.timeout is not None:
-            add("timeout", "Timeout", f"A run stops after {_fmt(self.timeout)} s of policy CPU time; its curves "
-                                      "are NaN after that.")
+            add("timeout", "Timeout", f"A run stops after {_fmt(self.timeout)} s of policy CPU time. "
+                                      "Its curves are empty (NaN) after that.")
         if self.measure_memory:
-            add("memory", "Slower timings", "measure_memory=True slows Python code about fivefold: compare CPU "
-                                            "times only between runs with the same setting.")
+            add("memory", "Slower timings", "measure_memory=True makes Python code about 5 times slower. "
+                                            "Compare CPU times only between runs with the same setting.")
         if self.n_jobs != 1:
-            add("n_jobs", "Parallel runs", f"With n_jobs={self.n_jobs}, each process uses one BLAS thread: "
-                                           "compare CPU times only between runs with the same n_jobs.")
+            add("n_jobs", "Parallel runs", f"n_jobs={self.n_jobs}: runs in parallel, one BLAS thread each. "
+                                           "Compare CPU times only between runs with the same n_jobs.")
         if self.train_freq > 1:
-            add("train_freq", "Batched updates", f"Policies are updated every {self.train_freq} steps with the "
-                                                 f"buffered observations (train_freq={self.train_freq}).")
+            add("train_freq", "Batched updates", f"Policies learn every {self.train_freq} steps, from the "
+                                                 f"observations of these steps (train_freq={self.train_freq}).")
         if self.checkpoint_dir is not None:
-            add("checkpoint", "Checkpoints", f"Finished runs saved in {self.checkpoint_dir} are reloaded instead "
-                                             "of run again: empty the folder after changing the code or the settings.")
+            add("checkpoint", "Checkpoints", f"Finished runs saved in {self.checkpoint_dir} are reloaded, not run "
+                                             "again. Empty this folder after changing the code or the settings.")
         return out
 
     def _say_plan(self) -> None:
