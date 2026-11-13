@@ -293,11 +293,12 @@ class UCBV2(IndexPolicy):
 
 
 class UCBMin(IndexPolicy):
-    """UCB-min: for each action, the smaller of the UCB1 bonus and a variance-aware bonus.
+    """UCB-min (Izri, Groz and Maniu, IEEE BigData 2026): for each action, the smaller of
+    the UCB1 bonus and a variance-aware bonus.
 
     ``variant="v1"`` pairs UCB1 with UCB-V (UCB-minV1); ``variant="v2"`` pairs it
     with UCB-V2 (UCB-minV2, needs the horizon). The choice is made per action and per step.
-    Both bonuses use ln t with t the current round (1-based), as in the UCB-min experiments.
+    Both bonuses use ln t with t the current round (1-based).
     """
 
     base_name = "UCBMin"

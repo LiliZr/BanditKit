@@ -17,8 +17,7 @@ optional ``noise_std``
 ``relevance`` (n_members, K), optional ``objectives``         group recommendation MAB
 ============================================================  ==============================
 
-Files written by the Scaling-Linear-Bandits preprocessing (``item_features``,
-``user_thetas``, ``user_stream``, ``noise_std``) are read as well.
+``item_features`` is accepted as another name for ``action_features``.
 """
 from __future__ import annotations
 

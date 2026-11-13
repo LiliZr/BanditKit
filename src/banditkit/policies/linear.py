@@ -341,9 +341,9 @@ class ConfidenceBall1(SingleModelPolicy):
 
     The confidence set is an L1 ball in the V^1/2 geometry, of radius sqrt(k) beta(n).
     Its UCB on x is ``x . theta + alpha * sqrt(k) * beta(n) * ||V^-1/2 x||_inf``.
-    beta(n) is the OFUL radius (Abbasi-Yadkori et al., 2011), as in the thesis code,
-    not the radius of Dani et al.: the L1 ball of radius sqrt(k) beta(n) contains
-    the OFUL ellipsoid, so the confidence level is kept.
+    beta(n) is the OFUL radius (Abbasi-Yadkori et al., 2011), tighter than the radius
+    of Dani et al.: the L1 ball of radius sqrt(k) beta(n) contains the OFUL
+    ellipsoid, so the confidence level is kept.
     """
 
     base_name = "ConfidenceBall1"

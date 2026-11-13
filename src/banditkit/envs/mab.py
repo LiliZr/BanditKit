@@ -217,7 +217,11 @@ class EmpiricalMAB(_StaticMAB):
 
 
 class GroupRecommendationMAB(_StaticMAB):
-    """Recommend a category (action) to a group of users, as in the MoMAB experiments.
+    """Recommend a category (action) to a group of users: relevance and agreement objectives.
+
+    The two objectives follow the group recommendation semantics of Amer-Yahia, Roy,
+    Chawla, Das and Yu (PVLDB 2009): relevance of an item to the group, and
+    disagreement among the members.
 
     Playing category c draws a group member u uniformly at random:
 

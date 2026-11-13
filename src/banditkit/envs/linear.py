@@ -47,8 +47,7 @@ class LinearEnv(Environment):
     noise_std : float or array of shape (reward_dim,)
         Standard deviation of the Gaussian noise.
     normalize : bool
-        Map mean rewards to [0, 1] per objective with the min and max over actions,
-        as in the experiments of the Stochastic-linear-bandits repository.
+        Map mean rewards to [0, 1] per objective with the min and max over actions.
     """
 
     def __init__(self, action_features: Any, theta: Any, noise_std: Any = 0.1, normalize: bool = False) -> None:
