@@ -113,7 +113,10 @@ def summarize(results: Results, name: str, description: str = "", command: Optio
     """
     meta = results.meta
     steps = np.asarray(results.steps)
-    keep = np.unique(np.linspace(0, steps.size - 1, min(max_points, steps.size)).round().astype(int))
+    # Evenly spaced points, plus log-spaced ones so that the first steps stay visible on a log axis.
+    n = min(max_points, steps.size)
+    keep = np.unique(np.concatenate([np.linspace(0, steps.size - 1, n),
+                                     np.geomspace(1, steps.size, max(2, n // 2)) - 1]).round().astype(int))
     styles = encode(results)
     labels = results.labels
     names = [m for m in METRIC_TITLES if all(m in results.curves[lb] for lb in labels)]
@@ -240,6 +243,9 @@ def build_dashboard(folders: Optional[Sequence[Union[str, Path]]] = None, result
     for path in paths:
         summary = load_summary(path)
         summary.setdefault("folder", str(path))
+        explain = Path(path) / "explain.json"
+        if explain.is_file():  # the "Inside the policies" charts
+            summary["explain"] = json.loads(explain.read_text())
         summaries.append(summary)
     if offline:
         from plotly.offline import get_plotlyjs

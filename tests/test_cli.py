@@ -19,7 +19,9 @@ CONFIG = {
 
 def test_run_config_writes_a_results_folder(tmp_path):
     folder = cli.run_config(CONFIG, tmp_path / "tiny", command="python -m banditkit run tiny/config.json")
-    assert {p.name for p in folder.iterdir()} == {"config.json", "results.npz", "summary.json"}
+    assert {p.name for p in folder.iterdir()} == {"config.json", "results.npz", "summary.json", "explain.json"}
+    explain = json.loads((folder / "explain.json").read_text())  # "Inside the policies" charts of the dashboard
+    assert {(x["policy"], x["kind"]) for x in explain} >= {("UCB1", "why"), ("UCB1", "allocation"), ("KL-UCB c=0", "why")}
     summary = json.loads((folder / "summary.json").read_text())
     assert summary["name"] == "tiny" and summary["problem"]["n_runs"] == 4 and summary["problem"]["n_instances"] == 2
     assert [p["label"] for p in summary["policies"]] == ["UCB1", "KL-UCB c=0", "Random"]
@@ -113,3 +115,17 @@ def test_summary_for_the_dashboard(tmp_path):
     assert "n_buckets" not in s["curves"]  # always 0 without buckets: not worth a chart
     assert list(s["search"]) == ["LinUCB searched"] and len(s["search"]["LinUCB searched"]["rows"]) == 4
     assert [n["key"] for n in s["notices"]][:2] == ["defaults", "search"]
+
+
+def test_explain_charts_by_problem(tmp_path):
+    from banditkit.explain import explain
+
+    lin = bk.sample_instances("linear", 1, n_actions=40, n_features=5, seed=0)[0]
+    items = explain(lin, {"LinUCB": bk.LinUCB(), "LinUCB_AB": bk.LinUCB(n_buckets="sqrt")}, horizon=300)
+    kinds = {(x["policy"], x["kind"]) for x in items}
+    assert ("LinUCB", "ellipsoid") in kinds and ("LinUCB_AB", "buckets") in kinds
+    users = bk.sample_instances("multi_user", 1, n_actions=30, n_features=4, n_users=6, n_clusters=2, seed=0)[0]
+    items = explain(users, {"CLUB": bk.CLUB(), "LinUCB_IND": bk.LinUCB(user_model="individual")}, horizon=200,
+                    n_true_groups=2)
+    assert [(x["policy"], x["kind"]) for x in items] == [(None, "clusters")]
+    assert all("title" not in x["figure"]["layout"] or not x["figure"]["layout"]["title"] for x in items)

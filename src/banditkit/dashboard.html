@@ -96,6 +96,8 @@ details.style > summary { cursor: pointer; color: var(--ink-2); font-size: 13px;
 .card .tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .chart { width: 100%; height: 400px; }
 .chart.short { height: 360px; }
+.chart.tall { height: 560px; }
+.tools select { max-width: 220px; }
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -595,6 +597,9 @@ function renderList() {
 document.getElementById("runs").addEventListener("click", e => { const b = e.target.closest(".run"); if (b) select(Number(b.dataset.i)); });
 document.getElementById("picker").addEventListener("change", async e => {
   const files = [...e.target.files].filter(f => f.name === "summary.json");
+  const explains = {};
+  for (const f of [...e.target.files].filter(f => f.name === "explain.json"))
+    try { explains[(f.webkitRelativePath || f.name).replace(/\/?explain\.json$/, "")] = JSON.parse(await f.text()); } catch (err) { /* skip */ }
   let first = null;
   for (const file of files) {
     try {
@@ -602,6 +607,7 @@ document.getElementById("picker").addEventListener("change", async e => {
       if (!r.curves || !r.policies || !r.steps) continue;
       r.folder = (file.webkitRelativePath || file.name).replace(/\/?summary\.json$/, "");
       r._loaded = true;
+      if (explains[r.folder]) r.explain = explains[r.folder];
       const known = RUNS.findIndex(x => runKey(x) === runKey(r));
       if (known >= 0) RUNS[known] = r; else RUNS.push(r);
       if (first === null) first = known >= 0 ? known : RUNS.length - 1;
@@ -713,7 +719,12 @@ function renderMain() {
         <label class="field"><input type="checkbox" id="trade-labels" ${ui.tradeLabels ? "checked" : ""}> Labels</label>`, "short")}
     </div>
     ${chartCard("search", "Hyperparameter search", "", searchLabels(r).length > 1 ? `<select id="search-label">${searchLabels(r).map(l =>
-      `<option value="${esc(l)}" ${l === ui.searchLabel ? "selected" : ""}>${esc(nameOf(r, l))}</option>`).join("")}</select>` : "")}`;
+      `<option value="${esc(l)}" ${l === ui.searchLabel ? "selected" : ""}>${esc(nameOf(r, l))}</option>`).join("")}</select>` : "")}
+    ${explainItems(r).length ? `<section class="card" id="card-explain"><div class="card-head"><h2 id="h-explain">Inside the policies</h2>
+      <div class="tools"><select id="ex-pol" aria-label="Policy"></select><select id="ex-kind" aria-label="Chart"></select>
+      <button class="small" data-export="explain" data-format="png">PNG</button><button class="small" data-export="explain" data-format="svg">SVG</button>
+      <button class="small" data-export="explain" data-format="pdf">PDF</button></div></div>
+      <p class="caption" id="c-explain"></p><div class="chart tall" id="explain"></div></section>` : ""}`;
   bindMain();
   drawAll();
 }
@@ -764,6 +775,8 @@ function bindMain() {
     if (act) { revision++; save(); renderMain(); }
   });
   main.querySelectorAll("[data-export]").forEach(b => b.addEventListener("click", () => exportChart(b.dataset.export, b.dataset.format)));
+  on("ex-pol", "change", e => { ui.explainPolicy = e.target.value; ui.explainKind = ""; save(); drawExplain(); });
+  on("ex-kind", "change", e => { ui.explainKind = e.target.value; save(); drawExplain(); });
 }
 
 // ------------------------------------------------------------------ drawing
@@ -773,7 +786,64 @@ const CONFIG = {
            colorbarTitleText: false, legendPosition: true, legendText: true, shapePosition: false, titleText: false },
   modeBarButtonsToRemove: ["select2d", "lasso2d", "toImage"],
 };
-function drawAll() { drawTable(); drawCharts(); }
+function drawAll() { drawTable(); drawCharts(); drawExplain(); }
+
+// ------------------------------------------------------------------ inside the policies (one traced run)
+const explainItems = r => (r.explain || []).filter(x => x && x.figure);
+function explainChoice(r) {
+  const items = explainItems(r);
+  if (!items.length) return null;
+  const pols = [...new Set(items.map(x => x.policy || ""))];
+  const pol = pols.includes(ui.explainPolicy) ? ui.explainPolicy : pols[0];
+  const kinds = items.filter(x => (x.policy || "") === pol);
+  return { pols, pol, kinds, item: kinds.find(x => x.kind === ui.explainKind) || kinds[0] };
+}
+function themeFigure(item, ctx, animated) {
+  // The charts come from Python (banditkit.plot.interactive); colors of the page are applied here.
+  const f = JSON.parse(JSON.stringify(item.figure)), L = f.layout = f.layout || {};
+  const bg = ctx.exporting ? (ui.export.background === "transparent" ? "rgba(0,0,0,0)" : "#ffffff") : "rgba(0,0,0,0)";
+  delete L.height; delete L.width; delete L.template;
+  Object.assign(L, { paper_bgcolor: bg, plot_bgcolor: bg, autosize: true,
+                     font: Object.assign({}, L.font, { family: ctx.family, size: ctx.font, color: ctx.tok.ink2 }),
+                     hoverlabel: { bgcolor: ctx.tok.surface, bordercolor: ctx.tok.grid, font: { color: ctx.tok.ink } },
+                     title: ctx.titled ? { text: item.title, x: 0.02, xanchor: "left", font: { color: ctx.tok.ink, size: ctx.font * 1.15 } } : { text: "" } });
+  for (const k of Object.keys(L)) if (/^[xy]axis\d*$/.test(k)) {
+    const ax = L[k];
+    Object.assign(ax, { gridcolor: ctx.tok.grid, linecolor: ctx.tok.axis, zerolinecolor: ctx.tok.grid,
+                        tickfont: Object.assign({}, ax.tickfont, { color: ctx.tok.ink2 }) });
+    if (ax.title) ax.title = Object.assign({}, typeof ax.title === "string" ? { text: ax.title } : ax.title, { font: { color: ctx.tok.ink } });
+  }
+  L.legend = Object.assign({}, L.legend, { font: { color: ctx.tok.ink }, bgcolor: "rgba(0,0,0,0)" });
+  (L.annotations || []).forEach(a => { a.font = Object.assign({}, a.font, { color: ctx.tok.ink2 }); });
+  (L.shapes || []).forEach(sh => { if (sh.line && /^#(1|2|3)/.test(sh.line.color || "")) sh.line.color = ctx.tok.ink2; });
+  if (!ctx.titled && L.margin && L.margin.t > 50) L.margin = Object.assign({}, L.margin, { t: 50 });  // room for the legend only
+  if (animated) {
+    (L.sliders || []).forEach(sl => Object.assign(sl, { font: { color: ctx.tok.ink2 }, bgcolor: ctx.tok.grid, bordercolor: ctx.tok.grid,
+      activebgcolor: ctx.tok.axis, currentvalue: Object.assign({}, sl.currentvalue, { font: { color: ctx.tok.ink } }) }));
+    (L.updatemenus || []).forEach(m => Object.assign(m, { font: { color: ctx.tok.ink }, bgcolor: ctx.tok.surface, bordercolor: ctx.tok.grid }));
+  } else {
+    delete L.sliders; delete L.updatemenus; f.frames = [];
+    L.margin = Object.assign({}, L.margin, { b: 50 });
+  }
+  return f;
+}
+function drawExplain() {
+  const r = run(), el = document.getElementById("explain"), c = explainChoice(r);
+  if (!el || !c || !window.Plotly) return;
+  const key = [runKey(r), c.pol, c.item.kind, theme(), ui.font].join("|");
+  const polSel = document.getElementById("ex-pol"), kindSel = document.getElementById("ex-kind");
+  polSel.innerHTML = c.pols.map(p => `<option value="${esc(p)}" ${p === c.pol ? "selected" : ""}>${esc(p ? nameOf(r, p) : "The problem")}</option>`).join("");
+  kindSel.innerHTML = c.kinds.map(x => `<option value="${esc(x.kind)}" ${x === c.item ? "selected" : ""}>${esc(x.title)}</option>`).join("");
+  polSel.hidden = c.pols.length < 2;
+  document.getElementById("h-explain").textContent = `Inside the policies: ${c.item.title}${c.pol ? ` (${nameOf(r, c.pol)})` : ""}`;
+  document.getElementById("c-explain").textContent =
+    `${c.item.kind === "scalarization" ? "First instance." : "One traced run on the first instance."} ${c.item.caption}`;
+  if (el._key === key) return;  // keep the animation where it is
+  el._key = key;
+  const f = themeFigure(c.item, ctxFor(false), true);
+  Plotly.newPlot(el, { data: f.data, layout: f.layout, frames: f.frames || [],
+                       config: { displaylogo: false, responsive: true, modeBarButtonsToRemove: ["select2d", "lasso2d", "toImage"] } });
+}
 function drawCharts() {
   const r = run();
   if (!window.Plotly) {
@@ -903,6 +973,7 @@ function download(blob, name) {
 }
 function fileName(id, ext) {
   const r = run(), slug = s => String(s).replace(/[^A-Za-z0-9_.-]+/g, "_");
+  if (id === "explain") { const c = explainChoice(r); return `${slug(r.name)}_${slug(c.pol || "problem")}_${c.item.kind}.${ext}`; }
   return `${slug(r.name)}_${id}${id === "search" ? "" : "_" + slug(ui.metric)}.${ext}`;
 }
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -967,7 +1038,15 @@ function csvOf(id) {
 async function exportChart(id, format) {
   if (format === "csv") { download(new Blob([csvOf(id)], { type: "text/csv" }), fileName(id, "csv")); return; }
   if (!window.Plotly) { toast("Exports need plotly.js"); return; }
-  const chart = CHARTS.find(c => c.id === id), fig = chart.build(run(), ctxFor(true));
+  let fig;
+  if (id === "explain") {
+    const c = explainChoice(run()), el = document.getElementById("explain");
+    if (!c) return;
+    const f = themeFigure(c.item, ctxFor(true), false);
+    fig = { data: el && el.data ? el.data.map(t => Object.assign({}, t)) : f.data, layout: f.layout };
+  } else {
+    fig = CHARTS.find(c => c.id === id).build(run(), ctxFor(true));
+  }
   if (!fig) return;
   const ex = ui.export, wpx = Math.round(ex.w * 96), hpx = Math.round(ex.h * 96);
   const holder = document.createElement("div");

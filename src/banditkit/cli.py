@@ -80,8 +80,8 @@ def build_policies(entries: Sequence[Dict[str, Any]]) -> list:
 
 
 def run_config(config: Dict[str, Any], folder: Path, n_jobs: Optional[int] = None,
-               overrides: Optional[Dict[str, Any]] = None, command: Optional[str] = None) -> Path:
-    """Run the experiment of ``config`` and save it as a results folder."""
+               overrides: Optional[Dict[str, Any]] = None, command: Optional[str] = None, explain: bool = True) -> Path:
+    """Run the experiment of ``config`` and save it as a results folder (with its explanatory charts)."""
     import banditkit as bk
     from .report import save_run
 
@@ -90,7 +90,22 @@ def run_config(config: Dict[str, Any], folder: Path, n_jobs: Optional[int] = Non
         settings["n_jobs"] = n_jobs
     config = {**config, "experiment": {k: v for k, v in settings.items() if k != "n_jobs"}}
     results = bk.Experiment(build_env(config["env"]), build_policies(config["policies"]), **settings).run()
-    return save_run(results, folder, config=config, description=config.get("description", ""), command=command)
+    folder = save_run(results, folder, config=config, description=config.get("description", ""), command=command)
+    if explain:
+        _explain(config, folder, results.labels)
+    return folder
+
+
+def _explain(config: Dict[str, Any], folder: Path, labels=None) -> None:
+    """explain.json of a results folder (the "Inside the policies" charts), when plotly is installed."""
+    try:
+        import plotly  # noqa: F401
+    except ImportError:
+        print("Install plotly for the explanatory charts of the dashboard (pip install plotly).")
+        return
+    from .explain import save_explain
+
+    save_explain(config, folder, labels)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -115,6 +130,9 @@ def _parser() -> argparse.ArgumentParser:
     dash.add_argument("--out", type=Path, default=Path("dashboard.html"), help="HTML file to write.")
     dash.add_argument("--offline", action="store_true", help="Embed plotly.js (works without internet).")
     dash.add_argument("--open", action="store_true", help="Open the dashboard in the browser.")
+    dash.add_argument("--explain", action="store_true",
+                      help="Recompute the explanatory charts (explain.json) of the folders from their config.json.")
+    run.add_argument("--no-explain", action="store_true", help="Skip the explanatory charts (explain.json).")
     return parser
 
 
@@ -131,13 +149,20 @@ def main(argv: Optional[List[str]] = None) -> int:
             name = args.name or (path.parent.name if path.name == "config.json" else path.stem)
             folder = args.results_dir / name
             command = f"python -m banditkit run {folder.as_posix()}/config.json"
-            run_config(config, folder, n_jobs=args.n_jobs, overrides=overrides, command=command)
+            run_config(config, folder, n_jobs=args.n_jobs, overrides=overrides, command=command,
+                       explain=not args.no_explain)
             print(f"Results saved in {folder}/")
         if args.generate_dashboard:
             out = build_dashboard(results_dir=args.results_dir, out=args.dashboard)
             print(f"Dashboard: {out}")
         return 0
 
+    if args.explain:
+        from .report import find_runs
+
+        for folder in args.folders or find_runs(args.results_dir):
+            if (Path(folder) / "config.json").is_file():
+                _explain(json.loads((Path(folder) / "config.json").read_text()), Path(folder))
     out = build_dashboard(args.folders or None, results_dir=args.results_dir, out=args.out, offline=args.offline)
     print(f"Dashboard: {out}")
     if args.open:
