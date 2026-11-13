@@ -124,14 +124,14 @@ class BucketedPolicy(LinearPolicy):
                                doc="Number of action buckets ('sqrt': round(sqrt(K)); None: no buckets)."),
         "bucket_rebuild_freq": ParamSpec("int", default=500, low=1,
                                          doc="A model rebuilds its buckets after this many of its own updates."),
-        "bucket_by_ucb": ParamSpec("bool", default=False, doc="Rank actions by UCB instead of estimated mean when rebuilding."),
+        "bucket_by_ucb": ParamSpec("bool", default=True, doc="Rank actions by UCB when rebuilding (False: by estimated mean)."),
         "refresh_champions": ParamSpec("bool", default=False,
                                        doc="After each prediction, the chosen bucket's champion becomes its best UCB action."),
     }
 
     def _check_params(self) -> None:
-        if self.n_buckets is None and (self.bucket_by_ucb or self.refresh_champions):
-            raise ValueError("`bucket_by_ucb` and `refresh_champions` need `n_buckets`.")
+        if self.n_buckets is None and self.refresh_champions:
+            raise ValueError("`refresh_champions` needs `n_buckets`.")
 
     @property
     def techniques(self) -> Tuple[str, ...]:

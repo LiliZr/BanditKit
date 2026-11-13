@@ -404,15 +404,16 @@ class Experiment:
         return sorted(set(scalar)), sorted(set(per_action))
 
     def notices(self) -> List[Dict[str, str]]:
-        """What to know before reading the results of this run: one ``{"key", "title", "text"}`` per point.
+        """What to know before reading the results of this run: one ``{"key", "title", "text", "todo"}`` per point.
 
-        Printed as a numbered warning when the run starts (``verbose >= 1``) and stored in
-        ``results.meta["notices"]`` (the dashboard shows them).
+        ``text`` says what happens, in one or two short sentences; ``todo`` says how to change it (empty when
+        there is nothing to do). Printed as a numbered warning when the run starts (``verbose >= 1``) and
+        stored in ``results.meta["notices"]`` (the dashboard shows them as a table).
         """
         out: List[Dict[str, str]] = []
 
-        def add(key: str, title: str, text: str) -> None:
-            out.append({"key": key, "title": title, "text": text})
+        def add(key: str, title: str, text: str, todo: str = "") -> None:
+            out.append({"key": key, "title": title, "text": text, "todo": todo})
 
         grids = self._grids or {}
         defaults = {}
@@ -428,17 +429,18 @@ class Experiment:
             groups: Dict[str, List[str]] = {}  # same values, one group: "alpha=1 for UCB1 and KL-UCB"
             for label, (_, p) in defaults.items():
                 groups.setdefault(" ".join(f"{k}={_fmt(v)}" for k, v in p.items()), []).append(label)
-            values = "; ".join(f"{v} for {_list(labels)}" for v, labels in groups.items())
+            every = len(defaults) == len(self.policies) and len(groups) == 1
+            values = (f"{next(iter(groups))} for all policies" if every
+                      else "; ".join(f"{v} for {_list(labels)}" for v, labels in groups.items()))
             add("defaults", "Default hyperparameters",
-                f"{values}. These are the values of the papers. They are safe in theory but often explore too much. "
-                "To tune them, run a grid search: param_grid=True (\"param_grid\": true in a config file). "
-                f"Or set them yourself, e.g. {example}.")
+                f"Paper values: {values}. Safe in theory, but they often explore too much.",
+                f"Grid search: param_grid=True. Or set them, e.g. {example}.")
         searched = {label: g for label, g in grids.items() if g}
         if searched:
             n = sum(int(np.prod([len(v) for v in g.values()])) for g in searched.values())
             add("search", "Grid search",
-                f"{_list(list(searched))}: {n} combinations tried before the reported runs "
-                f"({self.search_runs} run(s) each, other seeds). The best final {self.search_metric} is kept. "
+                f"{n} combinations tried for {_list(list(searched))}, on other seeds "
+                f"({self.search_runs} run(s) each). The best final {self.search_metric} is kept.",
                 "These values fit this problem only.")
         assumed: Dict[str, List[str]] = {}
         for label, notes in self._notes.items():
@@ -447,31 +449,32 @@ class Experiment:
                     assumed.setdefault(text.split(" (")[0], []).append(label)
         if assumed:
             add("assumed", "Assumed constants",
-                "The problem does not give them, so the policies assume "
-                + "; ".join(f"{text.split(': ')[-1]} ({text.split(':')[0]}, for {_list(labels)})"
-                            for text, labels in assumed.items())
-                + ". If you know the true values, pass them to the policies.")
+                "Not given by the problem: "
+                + "; ".join(f"{text.split(': ')[-1]} ({text.split(':')[0]}, {_list(labels)})" for text, labels in assumed.items())
+                + ".", "Pass the true values to the policies.")
 
         bucketed = [label for label, p in self.policies.items() if p.get_params().get("n_buckets")]
         if bucketed:
+            by = ("UCB" if all(self.policies[l].get_params().get("bucket_by_ucb", True) for l in bucketed)
+                  else "UCB or estimated mean")
             add("buckets", "Arm buckets (heuristic)",
-                f"{_list(bucketed)} {_verb(bucketed, 'groups', 'group')} the actions into n_buckets buckets by estimated "
-                "mean. Each step picks one bucket and searches only that bucket. This is faster with many actions. "
-                "But it can miss the best action, and the regret bound of the paper no longer holds.")
+                f"{_list(bucketed)} {_verb(bucketed, 'ranks', 'rank')} the actions by {by} into buckets and "
+                f"{_verb(bucketed, 'searches', 'search')} one bucket per step. Faster, but it can miss the best "
+                "action, and the regret bound no longer holds.",
+                "Compare with the same policy without n_buckets.")
         kmeans = [label for label, p in self.policies.items() if p.get_params().get("user_model") == "kmeans"]
         if kmeans:
-            add("kmeans", "k-means users (heuristic)",
-                f"{_list(kmeans)} {_verb(kmeans, 'groups', 'group')} similar users with a k-means "
-                "(n_user_clusters clusters). Each user model is pulled towards its cluster. "
-                "This shares what similar users learned, but there is no regret guarantee.")
-        missing = []
+            add("kmeans", "K-means users (heuristic)",
+                f"{_list(kmeans)} {_verb(kmeans, 'pulls', 'pull')} each user model towards its k-means cluster. "
+                "No regret guarantee.", "Compare with user_model=\"individual\".")
+        missing, names = [], []
         if "pseudo_regret" not in self.track:
-            missing.append('pseudo-regret ("pseudo_regret")')
+            missing.append("pseudo-regret"); names.append('"pseudo_regret"')
         if self.spec.reward_dim > 1:
             for name, what in (("pareto_regret", "Pareto regret"), ("pareto_share", "share of Pareto-optimal pulls"),
                                ("unfairness", "unfairness"), ("reward_vec", "reward per objective")):
                 if name not in self.track:
-                    missing.append(f'{what} ("{name}")')
+                    missing.append(what); names.append(f'"{name}"')
         scalar, per_action = self._diagnostic_keys()
         # Diagnostics that cannot change on this problem: clusters of a single user, buckets nobody uses.
         if (self.spec.n_users or 1) <= 1:
@@ -479,47 +482,45 @@ class Experiment:
         if not any(p.get_params().get("n_buckets") for p in self.policies.values()):
             scalar = [k for k in scalar if k != "n_buckets"]
         if scalar and "clusters" not in self.track:
-            missing.append(f'{" and ".join(scalar)} over time ("clusters")')
+            missing.append(f'{" and ".join(scalar)} over time'); names.append('"clusters"')
         if per_action and "estimates" not in self.track:
-            missing.append('per-action estimates ("estimates")')
+            missing.append("per-action estimates"); names.append('"estimates"')
         if "actions" not in self.track:
-            missing.append('action of every step ("actions")')
-        if not self.measure_memory:
-            missing.append("peak memory (measure_memory=True)")
-        if missing:
-            text = ", ".join(missing)
-            add("not_stored", "Not stored",
-                f"{text[0].upper() + text[1:]}. The charts cannot show them. The brackets say how to store each one: "
-                "a quoted name goes in track (\"track\": [...] in a config file).")
+            missing.append("action of every step"); names.append('"actions"')
+        if missing or not self.measure_memory:
+            what = missing + ([] if self.measure_memory else ["peak memory"])
+            todo = ", ".join(([f"track=[{', '.join(names)}]"] if names else []) + ([] if self.measure_memory else ["measure_memory=True"]))
+            text = ", ".join(what)
+            add("not_stored", "Not stored", f"{text[0].upper() + text[1:]}. The charts cannot show them.", todo + ".")
 
         total = self.n_runs * self.n_instances
         if total == 1:
-            add("runs", "One run", "One run per policy, so there is no confidence interval. "
-                                   "Increase n_runs, or use several instances.")
+            add("runs", "One run", "One run per policy, so there is no confidence interval.",
+                "Increase n_runs, or use several instances.")
         elif total < 5:
-            add("runs", "Few runs", f"Only {total} runs per policy, so the confidence intervals are wide. Increase n_runs.")
+            add("runs", "Few runs", f"Only {total} runs per policy, so the confidence intervals are wide.", "Increase n_runs.")
         if self.log_interval > 1:
             k = self.log_interval
             how = (f"You set log_interval={k}." if self._log_interval_given
-                   else f"By default, log_interval = T // 5000 = {self.horizon} // 5000 = {k} (about 5000 points per run).")
+                   else f"Default: T // 5000 = {self.horizon} // 5000 = {k}.")
             add("log_interval", f"One point every {k} steps",
-                f"Curves keep one point every {k} steps, plus the last step. Between two points, the line is drawn, "
-                f"not measured. {how} log_interval=1 keeps every step (larger files).")
+                f"Between two stored points, the curve is drawn, not measured. {how}",
+                "log_interval=1 keeps every step (larger files).")
         if self.timeout is not None:
             add("timeout", "Timeout", f"A run stops after {_fmt(self.timeout)} s of policy CPU time. "
-                                      "Its curves are empty (NaN) after that.")
+                                      "Its curves are empty after that.", "Raise timeout, or set it to None.")
         if self.measure_memory:
-            add("memory", "Slower timings", "measure_memory=True makes Python code about 5 times slower. "
-                                            "Compare CPU times only between runs with the same setting.")
+            add("memory", "Slower timings", "Memory tracking (measure_memory=True) makes Python code about 5 times slower.",
+                "Compare CPU times only between runs with the same setting.")
         if self.n_jobs != 1:
-            add("n_jobs", "Parallel runs", f"n_jobs={self.n_jobs}: runs in parallel, one BLAS thread each. "
-                                           "Compare CPU times only between runs with the same n_jobs.")
+            add("n_jobs", "Parallel runs", f"Runs in parallel (n_jobs={self.n_jobs}), one BLAS thread each.",
+                "Compare CPU times only between runs with the same n_jobs.")
         if self.train_freq > 1:
-            add("train_freq", "Batched updates", f"Policies learn every {self.train_freq} steps, from the "
-                                                 f"observations of these steps (train_freq={self.train_freq}).")
+            add("train_freq", "Batched updates", f"Policies learn every {self.train_freq} steps "
+                                                 f"(train_freq={self.train_freq}), from the observations of these steps.")
         if self.checkpoint_dir is not None:
-            add("checkpoint", "Checkpoints", f"Finished runs saved in {self.checkpoint_dir} are reloaded, not run "
-                                             "again. Empty this folder after changing the code or the settings.")
+            add("checkpoint", "Checkpoints", f"Finished runs saved in {self.checkpoint_dir} are reloaded, not run again.",
+                "Empty this folder after changing the code or the settings.")
         return out
 
     def _say_plan(self) -> None:
@@ -642,7 +643,7 @@ def _say(message: str) -> None:
 
 
 #: Title of the warning printed when a run starts (see :meth:`Experiment.notices`).
-WARNING_TITLE = "WARNING /!\\"
+WARNING_TITLE = "/!\\ WARNING /!\\"
 _EXAMPLE_VALUES = {"alpha": 0.1, "lambda_": 0.01, "c": 0.0, "epsilon": 0.05, "tau": 0.1}
 
 
@@ -686,6 +687,10 @@ def _format_notices(notices: List[Dict[str, str]], stream: Any = None) -> str:
         body = textwrap.fill(f"{notice['title']}. {notice['text']}", width=width, initial_indent=head,
                              subsequent_indent=" " * pad)
         lines.append(body.replace(f"{notice['title']}.", title, 1))
+        if notice.get("todo"):
+            todo = textwrap.fill(notice["todo"], width=width, initial_indent=" " * pad + "→ ",
+                                 subsequent_indent=" " * (pad + 2))
+            lines.append(f"\033[2m{todo}\033[0m" if color else todo)
     return "\n".join(lines)
 
 

@@ -39,7 +39,7 @@ def test_cross_parameter_checks():
     with pytest.raises(ValueError, match="n_user_clusters"):
         bk.LinUCB(user_model="kmeans")
     with pytest.raises(ValueError, match="n_buckets"):
-        bk.LinUCB(bucket_by_ucb=True)
+        bk.LinUCB(refresh_champions=True)
     with pytest.raises(ValueError, match="either"):
         bk.UCB1(sigma=1.0, reward_range=1.0)
 

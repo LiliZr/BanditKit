@@ -487,7 +487,7 @@ def clusters(traces: Sequence, n_true_groups: int = None):
 def bucket_choice(trace, max_frames: int = 40):
     """Arm buckets: what is evaluated at each traced round; scales to many arms.
 
-    Left: one column per bucket, ranked by estimated mean at the last rebuild
+    Left: one column per bucket, ranked by UCB (or estimated mean) at the last rebuild
     (bucket 0 first). The gray bar spans the UCBs of the bucket's arms; the
     diamond is its champion. Step 1 compares the champions and picks a bucket
     (shaded). Right, same UCB scale: the arms of that bucket. Step 2 plays the
@@ -561,7 +561,7 @@ def bucket_choice(trace, max_frames: int = 40):
     per_round = G + int(round(K / G))
     _style(fig, f"{trace.label} · {K:,} arms, {G} buckets: ≈{per_round} UCBs per round instead of {K:,}", height=540)
     fig.update_layout(
-        xaxis=dict(domain=[0, 0.66], range=[-1, G], showgrid=False, title="Bucket (by estimated mean)"),
+        xaxis=dict(domain=[0, 0.66], range=[-1, G], showgrid=False, title=f"Bucket (by {'UCB' if trace.policy.get_params().get('bucket_by_ucb', True) else 'estimated mean'} at the last rebuild)"),
         xaxis2=dict(domain=[0.72, 1], anchor="y", showgrid=False, gridcolor=GRID, linecolor=GRID, zeroline=False,
                     title=f"Bucket {chosen[idx[-1]]}: arms by estimated mean"),
         yaxis=dict(title="UCB"))
