@@ -26,15 +26,24 @@ from . import __version__
 from .plot.style import encode
 from .results import Results, _to_json
 
-__all__ = ["summarize", "save_run", "load_summary", "find_runs", "build_dashboard", "SUMMARY_FILE"]
+__all__ = ["summarize", "save_run", "load_summary", "find_runs", "build_dashboard", "SUMMARY_FILE",
+           "METRIC_TITLES"]
 
 SUMMARY_FILE = "summary.json"
 
 #: Metrics shown by the dashboard, in this order, with their axis titles.
 METRIC_TITLES = {"regret": "Cumulative regret", "pseudo_regret": "Cumulative pseudo-regret",
                  "reward": "Cumulative reward", "pareto_regret": "Cumulative Pareto regret",
-                 "pareto_share": "Pareto-optimal pulls", "unfairness": "Unfairness",
-                 "cpu_time": "CPU time (s)", "wall_time": "Wall time (s)", "memory_mb": "Peak memory (MB)"}
+                 "pareto_share": "Share of Pareto-optimal pulls", "unfairness": "Unfairness",
+                 "cpu_time": "CPU time (s)", "wall_time": "Wall time (s)", "memory_mb": "Peak memory (MB)",
+                 "n_user_clusters": "Number of user clusters", "n_buckets": "Number of buckets"}
+#: Group of each metric in the dashboard: performance, multi-objective, cost or policy state.
+METRIC_GROUPS = {"regret": "performance", "pseudo_regret": "performance", "reward": "performance",
+                 "pareto_regret": "multi-objective", "pareto_share": "multi-objective",
+                 "unfairness": "multi-objective", "cpu_time": "cost", "wall_time": "cost", "memory_mb": "cost"}
+_HIGHER_IS_BETTER = {"reward", "pareto_share"}
+#: Curves that are not metrics (per-action arrays, cumulative reward vectors).
+_NOT_SCALAR = {"reward_vec"}
 _DASH = {"-": "solid", "--": "dash", ":": "dot", "-.": "dashdot"}
 _SYMBOL = {"o": "circle", "s": "square", "^": "triangle-up", "D": "diamond", "v": "triangle-down", "P": "cross",
            "X": "x", "*": "star", "h": "hexagon", "<": "triangle-left", ">": "triangle-right"}
@@ -45,16 +54,32 @@ def _round(values: np.ndarray) -> List[Optional[float]]:
     return [None if not math.isfinite(v) else float(f"{v:.6g}") for v in np.asarray(values, dtype=float).ravel()]
 
 
-def _mean_ci(values: np.ndarray):
-    """Mean over axis 0 and its 95% interval (normal approximation), ignoring NaN."""
+def _stats(values: np.ndarray) -> Dict[str, Any]:
+    """Mean over axis 0, its 95% interval (normal approximation), standard deviation and count, ignoring NaN."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         mean = np.nanmean(values, axis=0)
         n = np.sum(~np.isnan(values), axis=0)
-        half = 1.96 * np.nanstd(values, axis=0, ddof=1) / np.sqrt(np.maximum(n, 1)) if values.shape[0] > 1 \
-            else np.zeros_like(mean)
-    half = np.where(n > 1, half, 0.0)
-    return mean, mean - half, mean + half
+        sd = np.nanstd(values, axis=0, ddof=1) if values.shape[0] > 1 else np.zeros_like(mean)
+    sd = np.where(n > 1, sd, 0.0)
+    half = 1.96 * sd / np.sqrt(np.maximum(n, 1))
+    counts = np.atleast_1d(n).astype(int)
+    return {"mean": _round(mean), "low": _round(mean - half), "high": _round(mean + half), "sd": _round(sd),
+            "n": int(counts[0]) if np.all(counts == counts[0]) else counts.tolist()}
+
+
+def _metric_title(name: str) -> str:
+    if name in METRIC_TITLES:
+        return METRIC_TITLES[name]
+    if name.startswith("env_"):
+        return name[4:].replace("_", " ").upper() if len(name) <= 8 else name[4:].replace("_", " ").capitalize()
+    return name.replace("_", " ").capitalize()
+
+
+def _metric_group(name: str) -> str:
+    if name in METRIC_GROUPS:
+        return METRIC_GROUPS[name]
+    return "performance" if name.startswith("env_") else "policy state"
 
 
 def _changed(info: Dict[str, Any]) -> Dict[str, Any]:
@@ -90,23 +115,32 @@ def summarize(results: Results, name: str, description: str = "", command: Optio
     steps = np.asarray(results.steps)
     keep = np.unique(np.linspace(0, steps.size - 1, min(max_points, steps.size)).round().astype(int))
     styles = encode(results)
-    metrics = [m for m in METRIC_TITLES if all(m in results.curves[label] for label in results.labels)]
-    metrics = [m for m in metrics if any(np.isfinite(results.curve(lb, m)).any() for lb in results.labels)]
+    labels = results.labels
+    names = [m for m in METRIC_TITLES if all(m in results.curves[lb] for lb in labels)]
+    names += sorted({m for lb in labels for m in results.curves[lb]} - set(names) - _NOT_SCALAR)
+    metrics = []
+    for m in names:
+        if not all(m in results.curves[lb] and np.ndim(results.curves[lb][m]) == 2 for lb in labels):
+            continue  # per-action diagnostics, or a curve some policies do not have
+        values = np.concatenate([results.curve(lb, m).ravel() for lb in labels])
+        values = values[np.isfinite(values)]
+        if values.size == 0 or (_metric_group(m) == "policy state" and np.all(values == values[0])):
+            continue  # nothing measured, or a policy state that never changes (no buckets...)
+        metrics.append(m)
     curves: Dict[str, Dict[str, Any]] = {}
     finals: Dict[str, Dict[str, Any]] = {}
     for metric in metrics:
         curves[metric], finals[metric] = {}, {}
         last = results.final(metric)
-        for label in results.labels:
-            mean, low, high = _mean_ci(results.curve(label, metric)[:, keep])
-            curves[metric][label] = {"mean": _round(mean), "low": _round(low), "high": _round(high)}
-            f_mean, f_low, f_high = _mean_ci(last[label][:, None])
-            finals[metric][label] = {"mean": _round(f_mean)[0], "low": _round(f_low)[0], "high": _round(f_high)[0],
-                                     "values": _round(last[label])}
+        for label in labels:
+            curves[metric][label] = _stats(results.curve(label, metric)[:, keep])
+            stats = _stats(last[label][:, None])
+            finals[metric][label] = {k: (v[0] if isinstance(v, list) else v) for k, v in stats.items()}
+            finals[metric][label]["values"] = _round(last[label])
     notes = meta.get("parameter_notes", {})
     search = meta.get("param_search") or {}
     policies = []
-    for label in results.labels:
+    for label in labels:
         look = styles[label]
         info = meta.get("policies", {}).get(label, {})
         policies.append({
@@ -115,9 +149,16 @@ def summarize(results: Results, name: str, description: str = "", command: Optio
             "color": look["color"], "dash": _DASH.get(look["linestyle"], "solid"),
             "symbol": _SYMBOL.get(look["marker"], "circle") + ("" if look["filled"] else "-open"),
         })
+    searched = {}
+    for label, info in search.items():
+        if info and info.get("searched") and info.get("table"):
+            searched[label] = {"metric": info.get("metric", "regret"), "search_runs": info.get("search_runs"),
+                               "best": info.get("best_params", {}),
+                               "rows": [{"params": row["params"], "mean": _round([row["mean"]])[0],
+                                         "std": _round([row.get("std", float("nan"))])[0]} for row in info["table"]]}
     spec = meta.get("spec", {})
     return json.loads(json.dumps({
-        "schema": 1,
+        "schema": 2,
         "name": name,
         "description": description,
         "command": command,
@@ -125,14 +166,20 @@ def summarize(results: Results, name: str, description: str = "", command: Optio
         "banditkit_version": meta.get("banditkit_version", __version__),
         "problem": {"family": meta.get("family"), "horizon": meta.get("horizon"), "n_runs": results.n_runs,
                     "n_instances": meta.get("n_instances", 1), "seed": meta.get("seed"),
+                    "log_interval": meta.get("log_interval"), "track": meta.get("track", []),
+                    "measure_memory": meta.get("measure_memory", False),
                     **{k: spec.get(k) for k in ("n_actions", "n_features", "reward_dim", "n_users")},
                     **({"n_actions": "{} to {}".format(*meta["n_actions_range"])}
                        if meta.get("n_actions_range") and len(set(meta["n_actions_range"])) > 1 else {})},
         "policies": policies,
         "steps": _round(steps[keep]),
-        "metric_titles": {m: METRIC_TITLES[m] for m in metrics},
+        "metric_titles": {m: _metric_title(m) for m in metrics},
+        "metric_groups": {m: _metric_group(m) for m in metrics},
+        "higher_is_better": [m for m in metrics if m in _HIGHER_IS_BETTER or m.startswith("env_")],
         "curves": curves,
         "final": finals,
+        "search": searched,
+        "notices": meta.get("notices") or [],
     }, default=_to_json))
 
 

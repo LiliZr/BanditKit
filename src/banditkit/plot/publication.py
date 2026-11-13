@@ -207,14 +207,19 @@ def curves(results, metric: str = "regret", band: Optional[str] = "std", log_x: 
     return fig, ax
 
 
-def panel(results, metrics: Sequence[str] = ("regret", "reward", "cpu_time", "memory_mb"), band: Optional[str] = "std",
-          include=None, labels=None, overrides=None, style: Optional[str] = None, figsize=(9.5, 6.5)):
-    """Grid of :func:`curves` (2 x 2 by default) with one shared legend. Metrics never recorded are skipped."""
+def panel(results, metrics: Sequence[str] = ("regret", "cpu_time"), band: Optional[str] = "std",
+          include=None, labels=None, overrides=None, style: Optional[str] = None, figsize=None):
+    """Grid of :func:`curves` (two per row) with one shared legend. Metrics never recorded are skipped.
+
+    The default pairs what a policy achieves (regret) with what it costs (CPU time).
+    """
     import matplotlib.pyplot as plt
 
     first = _policies(results, include)[0]
     metrics = [m for m in metrics if m in results.curves[first] and not np.all(np.isnan(results.curve(first, m)))]
     n_cols = 2 if len(metrics) > 1 else 1
+    if figsize is None:
+        figsize = (9.5, 3.6 * int(np.ceil(len(metrics) / n_cols)) + 0.6)
     with _style_context(style):
         fig, axes = plt.subplots(int(np.ceil(len(metrics) / n_cols)), n_cols, figsize=figsize, layout="constrained",
                                  squeeze=False)

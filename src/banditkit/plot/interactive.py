@@ -15,7 +15,7 @@ import numpy as np
 from .._utils import pareto_front
 from .style import GRID, INK, INK_SECONDARY, PALETTE
 
-__all__ = ["allocation", "estimates", "why_this_arm", "beliefs", "prob_best", "gain_vs_uniform",
+__all__ = ["allocation", "estimates", "why_this_arm", "beliefs", "prob_best",
            "regret_by_arm", "ellipsoid", "scalarization", "ucbmin_choice", "clusters", "bucket_choice"]
 
 OTHER = "#b4b2aa"   # color of folded actions
@@ -281,35 +281,6 @@ def prob_best(trace, n_samples: int = 4000, seed: int = 0):
                         line=dict(color=_arm_color(trace, arm), width=2))
     fig.update_yaxes(tickformat=".0%", range=[0, 1.02])
     return _style(fig, f"{trace.label} · Probability of being the best arm", "Round", "Probability")
-
-
-def gain_vs_uniform(results, env, band: Optional[str] = "std"):
-    """Cumulative reward gained over an equal-share A/B test, mean over the runs of an experiment.
-
-    ``results`` comes from ``Experiment(env, ...).run()`` with several runs; ``env``
-    gives the mean rewards (fixed means, one user). An equal-share A/B test earns
-    on average the mean of the arms' mean rewards at each step, so a curve above 0
-    means the policy earned more. Random is itself an equal-share allocation: its
-    curve stays around 0, inside its band. ``band``: "std", "ci95", "quantiles" or None.
-    """
-    from .publication import mean_and_band
-
-    go = _go()
-    if not env.static_means or env.spec.n_users != 1:
-        raise ValueError("gain_vs_uniform needs an environment with fixed mean rewards and a single user.")
-    weights = np.asarray(results.meta["weights"], dtype=float)
-    uniform = float((env.mean_rewards(env.reset(seed=0)[0]) @ weights).mean())  # A/B test reward per step
-    steps = results.steps
-    fig = go.Figure()
-    for j, label in enumerate(results.labels):
-        color = PALETTE[j % len(PALETTE)]
-        mean, low, high = mean_and_band(results.curve(label, "reward") - steps * uniform, band)
-        if low is not None:
-            fig.add_scatter(x=np.r_[steps, steps[::-1]], y=np.r_[high, low[::-1]], fill="toself", mode="lines",
-                            line=dict(width=0), fillcolor=_rgba(color, 0.15), hoverinfo="skip", showlegend=False)
-        fig.add_scatter(x=steps, y=mean, mode="lines", name=label, line=dict(color=color, width=2))
-    fig.add_hline(y=0, line=dict(color=INK_SECONDARY, width=1))
-    return _style(fig, f"Gain over uniform allocation ({results.n_runs} runs)", "Round", "Extra cumulative reward")
 
 
 def regret_by_arm(traces, max_arms: int = 20):

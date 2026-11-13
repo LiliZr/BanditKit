@@ -91,7 +91,6 @@ def compute(n_jobs: int):
                     bk.GaussianThompsonSampling(), bk.Random()]
     res_t = bk.Experiment(mab, mab_policies, horizon=10_000, n_runs=20, seed=3, **run).run()
     pub["real"] = png(plot.curves(res_t, band="ci95")[0])
-    inter["gain"] = div(iplot.gain_vs_uniform(res_t, mab), "gain")
 
     # Multi-objective: a front with a concave part (arm 2), as in Drugan and Nowe (2013), fig. 1. 20 runs.
     mo_means = np.array([[0.95, 0.20], [0.85, 0.50], [0.55, 0.55], [0.20, 0.95], [0.45, 0.80],
@@ -154,7 +153,6 @@ PUB = [
 INTER = [
     ("allocation", "Allocation", "Bernoulli, UCB1, moyenne sur 20 runs."),
     ("regret_by_arm", "Regret par bras", "Bernoulli, UCB1, moyenne sur 20 runs."),
-    ("gain", "Gain sur l'allocation uniforme", "Bernoulli, 20 runs, bande = écart-type."),
     ("estimates", "Estimations", "Bernoulli, UCB1, une run."),
     ("why", "Pourquoi ce bras ?", "Une run. Curseur ou Play."),
     ("beliefs", "Croyances de Thompson Sampling", "Bernoulli, une run."),

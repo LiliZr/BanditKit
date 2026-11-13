@@ -56,8 +56,6 @@ def test_interactive_figures():
     for fig in (iplot.allocation(ucb), iplot.estimates(ucb), iplot.why_this_arm(ucb), iplot.beliefs(ts),
                 iplot.prob_best(ts), iplot.regret_by_arm(ucb)):
         assert fig.data
-    res = bk.Experiment(mab, [bk.UCB1(), bk.Random()], horizon=200, n_runs=3, seed=0).run()
-    assert iplot.gain_vs_uniform(res, mab).data
     het = bk.make_env(means=[0.3, 0.5, 0.6], noise_std=[0.01, 0.3, 0.05])
     assert iplot.ucbmin_choice(bk.trace(het, bk.UCBMinV1(), 300, every=10)).data
     mo = bk.make_env(means=[[0.9, 0.1], [0.1, 0.9], [0.4, 0.4]], noise_std=0.1)

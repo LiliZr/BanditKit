@@ -5,81 +5,121 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
 <style>
-/* Layout: a list of results folders on the left, the selected folder on the right (stacked on phones). */
+/* Results folders on the left, the selected folder on the right (stacked on phones). */
 :root {
-  --bg: #f5f6f8; --surface: #ffffff; --ink: #14181d; --ink-2: #56606b; --ink-3: #87909a;
-  --line: #e0e4e9; --accent: #2a78d6; --accent-soft: #e6effa; --warn: #8a5a00; --warn-soft: #fbf1dc;
+  --bg: #f5f6f8; --surface: #ffffff; --surface-2: #f0f2f5; --ink: #14181d; --ink-2: #56606b; --ink-3: #87909a;
+  --line: #e0e4e9; --accent: #2a78d6; --accent-soft: #e6effa; --warn: #7a4f00; --warn-soft: #fdf3dc; --warn-line: #efd28f;
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #0f1317; --surface: #161b21; --ink: #e6e9ee; --ink-2: #a3acb6; --ink-3: #6f7882;
-          --line: #29313a; --accent: #6fa6ef; --accent-soft: #1b2a3e; --warn: #e3b25a; --warn-soft: #2b2312;
-          color-scheme: dark; }
+  :root:not([data-theme="light"]) {
+    --bg: #0f1317; --surface: #161b21; --surface-2: #1c232b; --ink: #e6e9ee; --ink-2: #a3acb6; --ink-3: #6f7882;
+    --line: #29313a; --accent: #6fa6ef; --accent-soft: #1b2a3e; --warn: #f0c46a; --warn-soft: #2a2213; --warn-line: #5c4720;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1317; --surface: #161b21; --surface-2: #1c232b; --ink: #e6e9ee; --ink-2: #a3acb6; --ink-3: #6f7882;
+  --line: #29313a; --accent: #6fa6ef; --accent-soft: #1b2a3e; --warn: #f0c46a; --warn-soft: #2a2213; --warn-line: #5c4720;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); }
-.app { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 100vh; }
+.app { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 100vh; }
 aside { border-right: 1px solid var(--line); background: var(--surface); padding: 20px 16px; display: flex;
-        flex-direction: column; gap: 16px; }
+        flex-direction: column; gap: 14px; }
 .brand { display: grid; gap: 2px; }
-.brand b { font-size: 17px; letter-spacing: .01em; }
-.brand span, .hint { color: var(--ink-2); font-size: 13px; }
-.section-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
+.brand b { font-size: 17px; }
+.hint { color: var(--ink-2); font-size: 12.5px; }
+.label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
 .runs { display: grid; gap: 6px; }
 .run { text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px;
-       padding: 9px 11px; cursor: pointer; display: grid; gap: 2px; font: inherit; }
+       padding: 8px 10px; cursor: pointer; display: grid; gap: 1px; font: inherit; }
 .run:hover { border-color: var(--accent); }
 .run[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .run .name { font-weight: 600; overflow-wrap: anywhere; }
 .run .meta { font-size: 12px; color: var(--ink-2); }
 .run .tag { font-size: 11px; color: var(--accent); }
-.add { display: grid; gap: 6px; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--accent);
-          color: var(--accent); background: transparent; border-radius: 8px; padding: 8px 12px; font: inherit;
+          color: var(--accent); background: transparent; border-radius: 8px; padding: 7px 12px; font: inherit;
           font-weight: 600; cursor: pointer; }
 .button:hover { background: var(--accent-soft); }
-.button:focus-visible, .run:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.small { border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 6px; padding: 2px 8px;
+         font: inherit; font-size: 12px; cursor: pointer; }
+.small:hover { border-color: var(--accent); color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 aside footer { margin-top: auto; font-size: 12px; color: var(--ink-3); }
 code { font-family: var(--mono); font-size: 12.5px; }
-main { padding: 24px clamp(16px, 3vw, 36px) 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px;
+main { padding: 22px clamp(16px, 3vw, 32px) 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px;
        align-content: start; min-width: 0; }
-h1 { margin: 0; font-size: 24px; line-height: 1.2; overflow-wrap: anywhere; }
-.desc { margin: 4px 0 0; color: var(--ink-2); max-width: 75ch; }
+h1 { margin: 0; font-size: 23px; line-height: 1.2; overflow-wrap: anywhere; }
+.desc { margin: 4px 0 0; color: var(--ink-2); max-width: 80ch; }
 .facts { display: flex; flex-wrap: wrap; gap: 6px; }
-.fact { border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; font-size: 12.5px; color: var(--ink-2);
+.fact { border: 1px solid var(--line); border-radius: 99px; padding: 1px 10px; font-size: 12.5px; color: var(--ink-2);
         background: var(--surface); font-variant-numeric: tabular-nums; }
 .fact b { color: var(--ink); font-weight: 600; }
 .rerun { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rerun code { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+.rerun code { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
               overflow-x: auto; max-width: 100%; white-space: nowrap; }
-.copy { border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit; font-size: 12.5px; }
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); flex-wrap: wrap; }
-.seg button { border: 0; background: none; color: var(--ink-2); padding: 6px 12px; font: inherit; cursor: pointer; }
+.notices { border: 1px solid var(--warn-line); background: var(--warn-soft); border-radius: 10px; padding: 0; }
+.notices summary { cursor: pointer; padding: 9px 14px; font-weight: 700; color: var(--warn); }
+.notices ol { margin: 0; padding: 0 16px 12px 40px; display: grid; gap: 6px; }
+.notices li { color: var(--ink); }
+.notices li b { color: var(--warn); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
+         display: grid; gap: 10px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.field { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 13px; }
+.field > span:first-child { color: var(--ink-3); font-size: 12px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface);
+       flex-wrap: wrap; }
+.seg button { border: 0; background: none; color: var(--ink-2); padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); cursor: pointer; }
-.grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
-.card h2 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
-.chart { width: 100%; height: 380px; }
+.seg button:disabled { opacity: .4; cursor: not-allowed; }
+.group-name { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+select, input[type="number"], input[type="text"] { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+input[type="number"] { width: 64px; }
+input[type="range"] { width: 90px; }
+details.style > summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+.missing { font-size: 12.5px; color: var(--ink-2); }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.grid2.single { grid-template-columns: minmax(0, 1fr); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 12px; min-width: 0; }
+.card[hidden] { display: none; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.card h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.card .caption { margin: 2px 0 6px; font-size: 12.5px; color: var(--ink-2); }
+.card .tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chart { width: 100%; height: 400px; }
+.chart.short { height: 360px; }
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 th { font-size: 12px; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
 td.num { text-align: right; white-space: nowrap; }
-.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
+tr.off td { opacity: .45; }
+td input[type="text"] { width: 21ch; }
+td input[type="color"] { width: 28px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
 .params { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
 .badge { display: inline-block; font-size: 11px; border-radius: 4px; padding: 0 5px; margin: 1px 4px 1px 0;
          background: var(--warn-soft); color: var(--warn); }
 .badge.info { background: var(--accent-soft); color: var(--accent); }
 .empty { border: 1px dashed var(--line); border-radius: 10px; padding: 28px; color: var(--ink-2); background: var(--surface); }
-.note { color: var(--warn); font-size: 13px; }
+.note { color: var(--warn); font-size: 13px; margin: 0; }
+.toast { position: fixed; bottom: 16px; right: 16px; background: var(--ink); color: var(--bg); padding: 8px 14px;
+         border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 80vw; }
+.toast.show { opacity: .95; }
+@media (max-width: 1100px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   aside { border-right: 0; border-bottom: 1px solid var(--line); }
-  .grid { grid-template-columns: 1fr; }
+  .runs { grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); overflow-x: auto; padding-bottom: 4px; }
+  aside .hint:not(#count), aside footer { display: none; }
+  .chart { height: 330px; }
 }
 </style>
 {{PLOTLY}}
@@ -87,27 +127,64 @@ td.num { text-align: right; white-space: nowrap; }
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><b>banditkit</b><span id="count"></span></div>
-    <p class="section-label">Results folders</p>
+    <div class="brand"><b>banditkit</b><span class="hint" id="count"></span></div>
+    <p class="label">Results folders</p>
     <nav class="runs" id="runs" aria-label="Results folders"></nav>
-    <div class="add">
-      <label class="button" for="picker">Open a results folder…</label>
-      <input id="picker" type="file" webkitdirectory directory multiple hidden>
-      <span class="hint">Pick one folder, or a whole <code>results/</code> folder: every <code>summary.json</code> inside is
-        added to the list. Nothing is rerun.</span>
-    </div>
-    <footer>Rebuild with <code>python -m banditkit dashboard</code></footer>
+    <label class="button" for="picker">Open a results folder…</label>
+    <input id="picker" type="file" webkitdirectory directory multiple hidden>
+    <span class="hint">One folder, or a whole <code>results/</code> folder: every <code>summary.json</code> inside is added.
+      Nothing is rerun.</span>
+    <footer>Rebuild: <code>python -m banditkit dashboard</code></footer>
   </aside>
   <main id="main"></main>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script id="bk-data" type="application/json">{{DATA}}</script>
 <script>
 "use strict";
-const runs = JSON.parse(document.getElementById("bk-data").textContent);
-const state = { current: null, metric: "regret", logX: false };
+const RUNS = JSON.parse(document.getElementById("bk-data").textContent);
+const JSPDF_URL = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+const SVG2PDF_URL = "https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js";
 const FAMILY = { mab: "MAB", linear: "Linear", multi_user: "Multi-user linear" };
-const LOWER_IS_BETTER = new Set(["regret", "pseudo_regret", "pareto_regret", "unfairness", "cpu_time", "wall_time", "memory_mb"]);
+// Validated categorical palette (light steps, dark steps): color = algorithm family.
+const PAL_LIGHT = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
+const PAL_DARK = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
+const PALETTES = {
+  banditkit: { name: "banditkit (by family)" },
+  okabe: { name: "Okabe-Ito (color-blind safe)", colors: ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#F0E442"] },
+  tol: { name: "Paul Tol bright", colors: ["#4477AA", "#EE6677", "#228833", "#CCBB44", "#66CCEE", "#AA3377", "#BBBBBB"] },
+  tableau: { name: "Tableau 10", colors: ["#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#B07AA1",
+                                          "#FF9DA7", "#9C755F", "#BAB0AC"] },
+  viridis: { name: "Viridis (ordered)", ramp: ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779",
+                                               "#6dcd59", "#b4de2c"] },
+  gray: { name: "Grayscale (print)" },
+};
+const DASHES = ["solid", "dash", "dot", "dashdot", "longdash", "longdashdot"];
+const TOKENS = {
+  light: { ink: "#14181d", ink2: "#56606b", ink3: "#87909a", grid: "#e9ecf0", axis: "#9aa3ad", surface: "#ffffff" },
+  dark: { ink: "#e6e9ee", ink2: "#a3acb6", ink3: "#6f7882", grid: "#252c34", axis: "#4f5963", surface: "#161b21" },
+};
+const CUMULATIVE = new Set(["regret", "pseudo_regret", "reward", "pareto_regret", "cpu_time", "wall_time"]);
+const SANS = "Helvetica, Arial, sans-serif", SERIF = "Times, 'Times New Roman', serif";
 
+// ------------------------------------------------------------------ state (kept in this browser only)
+const store = {
+  get(key, fallback) { try { const v = localStorage.getItem("banditkit:" + key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
+  set(key, value) { try { localStorage.setItem("banditkit:" + key, JSON.stringify(value)); } catch (e) { /* storage off */ } },
+};
+const DEFAULT_UI = {
+  metric: "regret", view: "cumulative", band: "ci", logX: false, logY: false, outliers: "crop", factor: 4, ref: "",
+  palette: "banditkit", lines: "technique", markers: false, width: 2, font: 12, legend: "top", theme: "auto",
+  finalKind: "box", tradeLogX: "auto", tradeLabels: false, searchLabel: "",
+  export: { w: 6.4, h: 4, dpi: 300, font: 10, family: "sans", background: "white", title: false },
+};
+const ui = Object.assign({}, DEFAULT_UI, store.get("ui", {}));
+ui.export = Object.assign({}, DEFAULT_UI.export, ui.export || {});
+const perRun = store.get("runs", {});
+let current = null, revision = 0;
+const save = () => { store.set("ui", ui); store.set("runs", perRun); };
+
+// ------------------------------------------------------------------ helpers
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 function fmt(v) {
   if (v === null || v === undefined || !isFinite(v)) return "–";
@@ -122,209 +199,823 @@ function fmtParam(v) {
   if (v === null) return "None";
   return typeof v === "string" ? v : JSON.stringify(v);
 }
-const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-function hexToRgba(hex, alpha) {
+function rgba(hex, alpha) {
   const h = hex.replace("#", "");
   const n = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
-function runKey(run) { return run.folder || `${run.name}@${run.created}`; }
+function mix(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = s => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
+  return "#" + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, "0")).join("");
+}
+function median(xs) { const s = [...xs].sort((a, b) => a - b); const k = s.length >> 1; return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2; }
+function toast(text) { const t = document.getElementById("toast"); t.textContent = text; t.classList.add("show");
+                       clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600); }
+function theme() {
+  if (ui.theme === "light" || ui.theme === "dark") return ui.theme;
+  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+function applyTheme() {
+  if (ui.theme === "auto") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = ui.theme;
+}
+const runKey = run => run.folder || `${run.name}@${run.created}`;
+function rs(run) {
+  const k = runKey(run);
+  perRun[k] = Object.assign({ hidden: [], names: {}, colors: {}, titles: {} }, perRun[k] || {});
+  return perRun[k];
+}
+const run = () => RUNS[current];
+const nameOf = (r, label) => rs(r).names[label] || label;
+const higher = (r, m) => r.higher_is_better ? r.higher_is_better.includes(m) : (m === "reward" || m === "pareto_share");
+function group(r, m) {
+  if (r.metric_groups && r.metric_groups[m]) return r.metric_groups[m];
+  if (["cpu_time", "wall_time", "memory_mb"].includes(m)) return "cost";
+  if (["pareto_regret", "pareto_share", "unfairness"].includes(m)) return "multi-objective";
+  return "performance";
+}
+const ranked = (r, m) => group(r, m) !== "policy state";
+const cumulative = m => CUMULATIVE.has(m) || m.startsWith("env_");
+const title = (r, m) => (r.metric_titles || {})[m] || m;
+const totalRuns = r => (r.problem || {}).n_runs || 1;
 
-// ------------------------------------------------------------------ sidebar
+// ------------------------------------------------------------------ styles of the policies
+function colorOf(r, pol, i, t) {
+  const own = rs(r).colors[pol.label];
+  if (own) return own;
+  const n = r.policies.length;
+  if (ui.palette === "banditkit") {
+    const k = PAL_LIGHT.indexOf((pol.color || "").toLowerCase());
+    return k >= 0 ? (t === "dark" ? PAL_DARK[k] : PAL_LIGHT[k]) : (pol.color || PAL_LIGHT[i % 8]);
+  }
+  if (ui.palette === "gray") {
+    const [a, b] = t === "dark" ? ["#f2f2f2", "#6a6a6a"] : ["#111111", "#9a9a9a"];
+    return mix(a, b, n > 1 ? (i % 4) / 3 : 0);
+  }
+  if (ui.palette === "viridis") {
+    const ramp = PALETTES.viridis.ramp, x = n > 1 ? i / (n - 1) : 0, f = x * (ramp.length - 1), k = Math.floor(f);
+    return k >= ramp.length - 1 ? ramp[ramp.length - 1] : mix(ramp[k], ramp[k + 1], f - k);
+  }
+  const cs = PALETTES[ui.palette].colors;
+  return cs[i % cs.length];
+}
+function dashOf(r, pol, i) {
+  if (ui.palette === "gray") return DASHES[i % DASHES.length];
+  if (ui.palette !== "banditkit") {
+    const size = ui.palette === "viridis" ? Infinity : PALETTES[ui.palette].colors.length;
+    const overflow = Math.floor(i / size);
+    return ui.lines === "technique" && overflow === 0 ? (pol.dash || "solid") : DASHES[overflow % DASHES.length];
+  }
+  return ui.lines === "technique" ? (pol.dash || "solid") : "solid";
+}
+const markersOn = () => ui.markers || ui.palette === "gray";
+function styleMap(r, t) {
+  // One (color, dash) pair per policy: a repeated pair gets the next dash; dashed lines get hollow markers.
+  const used = new Set(), out = {};
+  r.policies.forEach((pol, i) => {
+    const color = colorOf(r, pol, i, t);
+    let dash = dashOf(r, pol, i), k = Math.max(0, DASHES.indexOf(dash)), tries = 0;
+    while (used.has(color + dash) && tries++ < DASHES.length) { k++; dash = DASHES[k % DASHES.length]; }
+    used.add(color + dash);
+    const symbol = pol.symbol || "circle";
+    out[pol.label] = { color, dash, symbol: dash !== "solid" && !symbol.endsWith("-open") ? symbol + "-open" : symbol };
+  });
+  return out;
+}
+
+// ------------------------------------------------------------------ data of the selected view
+function band(c) {
+  if (ui.band === "none") return [null, null];
+  if (ui.band === "sd" && c.sd) return [c.mean.map((m, i) => m === null ? null : m - c.sd[i]), c.mean.map((m, i) => m === null ? null : m + c.sd[i])];
+  return [c.low, c.high];
+}
+function viewTransform(r, m) {
+  const steps = r.steps, ref = ui.ref && r.curves[m] && r.curves[m][ui.ref] ? r.curves[m][ui.ref].mean : null;
+  const perStep = ui.view === "per_step" && cumulative(m) && !ref;
+  return (values, i) => {
+    let v = values;
+    if (v === null || v === undefined) return null;
+    if (perStep) v = steps[i] > 0 ? v / steps[i] : null;
+    if (ref && v !== null) v = ref[i] > 0 ? v / ref[i] : null;
+    return v;
+  };
+}
+function seriesOf(r, m, label) {
+  const c = r.curves[m][label], tr = viewTransform(r, m);
+  const [lo, hi] = band(c);
+  const mapArr = a => a ? a.map((v, i) => tr(v, i)) : null;
+  return { x: r.steps, mean: mapArr(c.mean), low: mapArr(lo), high: mapArr(hi) };
+}
+function finalOf(r, m, label) {
+  const f = (r.final[m] || {})[label];
+  if (!f) return null;
+  const last = r.steps.length - 1, T = r.steps[last];
+  const refF = ui.ref && r.final[m] && r.final[m][ui.ref] ? r.final[m][ui.ref].mean : null;
+  const perStep = ui.view === "per_step" && cumulative(m) && !refF;
+  const tr = v => (v === null || v === undefined) ? null : perStep ? v / T : refF ? (refF > 0 ? v / refF : null) : v;
+  let low = f.low, high = f.high;
+  if (ui.band === "sd" && f.sd !== undefined) { low = f.mean - f.sd; high = f.mean + f.sd; }
+  return { mean: tr(f.mean), low: tr(low), high: tr(high), values: (f.values || []).map(tr), n: f.n };
+}
+function yTitle(r, m) {
+  const t = title(r, m);
+  if (ui.ref && r.curves[m] && r.curves[m][ui.ref]) return `${t} / ${t.charAt(0).toLowerCase() + t.slice(1)} of ${nameOf(r, ui.ref)}`;
+  if (ui.view === "per_step" && cumulative(m)) return t.replace(/^Cumulative /, "Average ").replace(/\b(\w)/, c => c.toUpperCase()) + " per step";
+  return t;
+}
+function visible(r) { const h = rs(r).hidden; return r.policies.filter(p => !h.includes(p.label)); }
+function outliersOf(r, m, labels) {
+  if (ui.outliers === "show" || !ranked(r, m) || higher(r, m) || ui.ref) return new Set();
+  const finals = labels.map(l => [l, (finalOf(r, m, l) || {}).mean]).filter(([, v]) => v !== null && isFinite(v));
+  if (finals.length < 3) return new Set();
+  const med = median(finals.map(([, v]) => Math.abs(v)));
+  if (!(med > 0)) return new Set();
+  return new Set(finals.filter(([, v]) => Math.abs(v) > ui.factor * med).map(([l]) => l));
+}
+
+// ------------------------------------------------------------------ figures
+function ctxFor(exporting) {
+  const t = exporting ? "light" : theme();
+  return { t, tok: TOKENS[t], exporting, font: exporting ? ui.export.font * 96 / 72 : ui.font,
+           family: exporting ? (ui.export.family === "serif" ? SERIF : SANS) : "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+           titled: exporting && ui.export.title };
+}
+function axis(ctx, extra) {
+  return Object.assign({ gridcolor: ctx.tok.grid, linecolor: ctx.tok.axis, tickcolor: ctx.tok.axis, showline: true, ticks: "outside",
+                         zeroline: false, automargin: true, tickfont: { color: ctx.tok.ink2 },
+                         title: { font: { color: ctx.tok.ink } } }, extra || {});
+}
+function legend(ctx) {
+  const pos = { bottom: { orientation: "h", x: 0, xanchor: "left", y: -0.3, yanchor: "top" },
+                top: { orientation: "h", x: 0, xanchor: "left", y: 1.02, yanchor: "bottom" },
+                right: { orientation: "v", x: 1.02, xanchor: "left", y: 1, yanchor: "top" },
+                inside: { orientation: "v", x: 0.01, xanchor: "left", y: 0.99, yanchor: "top",
+                          bgcolor: rgba(ctx.tok.surface, 0.8), bordercolor: ctx.tok.grid, borderwidth: 1 } }[ui.legend];
+  return Object.assign({ font: { color: ctx.tok.ink }, itemclick: "toggle", itemdoubleclick: "toggleothers" }, pos);
+}
+function base(ctx, figTitle, extra) {
+  const bg = ctx.exporting ? (ui.export.background === "transparent" ? "rgba(0,0,0,0)" : "#ffffff") : "rgba(0,0,0,0)";
+  const top = ctx.titled ? 36 : 10;
+  return Object.assign({
+    paper_bgcolor: bg, plot_bgcolor: bg, font: { family: ctx.family, size: ctx.font, color: ctx.tok.ink2 },
+    margin: { l: 60, r: 18, t: top + (ui.legend === "top" ? 24 : 0), b: 46 },
+    hoverlabel: { bgcolor: ctx.tok.surface, bordercolor: ctx.tok.grid, font: { color: ctx.tok.ink } },
+    title: ctx.titled ? { text: figTitle, x: 0.02, xanchor: "left", font: { color: ctx.tok.ink, size: ctx.font * 1.15 } } : { text: "" },
+  }, extra || {});
+}
+function logTicks(values, on) {
+  if (!on) return {};
+  const v = values.filter(x => x !== null && isFinite(x) && x > 0);
+  return v.length && Math.log10(Math.max(...v) / Math.min(...v)) >= 1 ? { dtick: 1, tickformat: "~g" } : { tickformat: "~g" };
+}
+function customTitle(r, key, fallback) { const v = rs(r).titles[key]; return v === undefined ? fallback : v; }
+
+function offScale(r, out, ctx, m) {
+  if (!out.size) return [];
+  const names = [...out].map(l => `${nameOf(r, l)} (final ${fmt((finalOf(r, m, l) || {}).mean)})`).join(", ");
+  const text = ui.outliers === "hide" ? `Hidden as outliers: ${names}` : `Off scale: ${names}`;
+  return [{ text: esc(text), xref: "paper", yref: "paper", x: 0.99, y: 0.99, xanchor: "right", yanchor: "top", showarrow: false,
+            bgcolor: rgba(ctx.tok.surface, 0.85), borderpad: 3, font: { size: ctx.font * 0.9, color: ctx.tok.ink2 } }];
+}
+function cropRange(values, logScale) {
+  const v = values.filter(x => x !== null && isFinite(x) && (!logScale || x > 0));
+  if (!v.length) return null;
+  let lo = Math.min(...v), hi = Math.max(...v);
+  if (logScale) { lo = Math.log10(lo); hi = Math.log10(hi); const pad = (hi - lo || 1) * 0.06; return [lo - pad, hi + pad]; }
+  lo = Math.min(0, lo);
+  const pad = (hi - lo || Math.abs(hi) || 1) * 0.06;
+  return [lo === 0 ? 0 : lo - pad, hi + pad];
+}
+
+function figCurve(r, ctx) {
+  const m = ui.metric;
+  if (!r.curves[m]) return null;
+  const vis = visible(r).map(p => p.label), out = outliersOf(r, m, vis), data = [], kept = [], S = styleMap(r, ctx.t);
+  r.policies.forEach((pol, i) => {
+    const c = r.curves[m][pol.label];
+    if (!c) return;
+    const off = !vis.includes(pol.label) || (ui.outliers === "hide" && out.has(pol.label));
+    if (off && ctx.exporting) return;  // a file shows only the visible policies
+    const s = seriesOf(r, m, pol.label), color = S[pol.label].color, name = nameOf(r, pol.label);
+    if (!off && s.low) {
+      data.push({ x: s.x, y: s.high, mode: "lines", line: { width: 0, color }, hoverinfo: "skip", showlegend: false,
+                  legendgroup: pol.label, meta: pol.label });
+      data.push({ x: s.x, y: s.low, mode: "lines", line: { width: 0, color }, fill: "tonexty", fillcolor: rgba(color, 0.14),
+                  hoverinfo: "skip", showlegend: false, legendgroup: pol.label, meta: pol.label });
+    }
+    data.push({ x: s.x, y: s.mean, mode: markersOn() ? "lines+markers" : "lines", name, meta: pol.label, legendgroup: pol.label,
+                visible: off ? "legendonly" : true, line: { color, width: ui.width, dash: S[pol.label].dash },
+                marker: { color, size: 7, symbol: S[pol.label].symbol, maxdisplayed: 14 },
+                hovertemplate: `${esc(name)}: %{y:.4~g}<extra></extra>` });
+    if (!off && !out.has(pol.label)) kept.push(...s.mean, ...(s.low || []), ...(s.high || []));
+  });
+  const yt = customTitle(r, `curve:${m}:${ui.view}:${ui.ref}:y`, yTitle(r, m));
+  const xt = customTitle(r, `curve:x`, "Step t");
+  const yaxis = axis(ctx, Object.assign({ title: { text: yt, font: { color: ctx.tok.ink } }, type: ui.logY ? "log" : "linear" },
+                                        logTicks(kept, ui.logY)));
+  if (ui.outliers === "crop" && out.size) { const range = cropRange(kept, ui.logY); if (range) yaxis.range = range; }
+  return { data, layout: base(ctx, yTitle(r, m), {
+    hovermode: "x unified", legend: legend(ctx), annotations: offScale(r, out, ctx, m),
+    xaxis: axis(ctx, Object.assign({ title: { text: xt, font: { color: ctx.tok.ink } }, type: ui.logX ? "log" : "linear" },
+                                   logTicks(r.steps, ui.logX))), yaxis,
+    uirevision: [runKey(r), m, ui.view, ui.ref, ui.logX, ui.logY, ui.outliers, ui.band, revision].join("|"),
+  }) };
+}
+
+function finalRows(r, m) {
+  const vis = visible(r).map(p => p.label), out = outliersOf(r, m, vis);
+  const rows = r.policies.map((pol, i) => ({ pol, i, f: finalOf(r, m, pol.label) }))
+    .filter(x => vis.includes(x.pol.label) && x.f && x.f.mean !== null && isFinite(x.f.mean)
+                 && !(ui.outliers === "hide" && out.has(x.pol.label)));
+  const sign = higher(r, m) ? -1 : 1;
+  if (ranked(r, m)) rows.sort((a, b) => sign * (a.f.mean - b.f.mean));
+  return { rows, out };
+}
+function figFinal(r, ctx) {
+  const m = ui.metric;
+  if (!r.final[m]) return null;
+  const { rows, out } = finalRows(r, m);
+  if (!rows.length) return null;
+  const kind = totalRuns(r) < 2 ? "dots" : ui.finalKind, order = rows.map(x => x.pol.label).reverse();  // best on top
+  const data = [], kept = [], S = styleMap(r, ctx.t);
+  for (const { pol, i, f } of rows) {
+    const color = S[pol.label].color, name = nameOf(r, pol.label), y = f.values.map(() => pol.label);
+    if (kind === "box") {
+      data.push({ type: "box", x: f.values, y, name, meta: pol.label, orientation: "h", boxpoints: "all", jitter: 0.5, pointpos: 0,
+                  boxmean: true, line: { color, width: 1.5 }, fillcolor: rgba(color, 0.12),
+                  marker: { color, size: 4, opacity: 0.55 }, showlegend: false, hoveron: "boxes+points",
+                  hovertemplate: `${esc(name)}: %{x:.4~g}<extra></extra>` });
+    } else if (kind === "violin") {
+      data.push({ type: "violin", x: f.values, y, name, meta: pol.label, orientation: "h", points: "all", jitter: 0.5, pointpos: 0,
+                  box: { visible: true, width: 0.25 }, meanline: { visible: true }, line: { color, width: 1.5 },
+                  fillcolor: rgba(color, 0.12), marker: { color, size: 3, opacity: 0.5 }, showlegend: false, spanmode: "hard",
+                  hovertemplate: `${esc(name)}: %{x:.4~g}<extra></extra>` });
+    } else {
+      data.push({ type: "scatter", mode: "markers", x: [f.mean], y: [pol.label], name, meta: pol.label, showlegend: false,
+                  error_x: { type: "data", symmetric: false, array: [f.high - f.mean], arrayminus: [f.mean - f.low],
+                             color, thickness: 1.5, width: 5 },
+                  marker: { color, size: 10, symbol: S[pol.label].symbol, line: { color, width: 1.5 } },
+                  hovertemplate: `${esc(name)}: %{x:.4~g} (interval ${fmt(f.low)} to ${fmt(f.high)})<extra></extra>` });
+    }
+    if (!out.has(pol.label)) kept.push(...(kind === "dots" ? [f.low, f.high, f.mean] : f.values));
+  }
+  const xaxis = axis(ctx, { title: { text: customTitle(r, `final:${m}:${ui.view}:${ui.ref}:x`, `${yTitle(r, m)} at t = T`),
+                                     font: { color: ctx.tok.ink } }, type: ui.logY ? "log" : "linear" });
+  Object.assign(xaxis, logTicks(kept, ui.logY));
+  const notes = [];
+  if (ui.outliers === "crop" && out.size) {
+    const range = cropRange(kept, ui.logY);
+    if (range) xaxis.range = range;
+    for (const { pol, f } of rows) if (out.has(pol.label))
+      notes.push({ text: `${fmt(f.mean)} →`, xref: "paper", x: 1, xanchor: "right", yref: "y", y: pol.label, showarrow: false,
+                   font: { size: ctx.font * 0.9, color: ctx.tok.ink2 } });
+  }
+  return { data, layout: base(ctx, `Final ${title(r, m).toLowerCase()}`, {
+    margin: { l: 10, r: 18, t: ctx.titled ? 36 : 10, b: 46 }, xaxis, annotations: notes, showlegend: false, noYTitle: true,
+    yaxis: axis(ctx, { type: "category", categoryorder: "array", categoryarray: order, tickvals: order,
+                       ticktext: order.map(l => nameOf(r, l)), tickfont: { color: ctx.tok.ink }, showgrid: false }),
+    uirevision: [runKey(r), m, ui.view, ui.ref, ui.logY, ui.outliers, kind, revision].join("|"),
+  }) };
+}
+
+function figTradeoff(r, ctx) {
+  const m = ui.metric;
+  if (!r.final.cpu_time || !r.final[m] || !["performance", "multi-objective"].includes(group(r, m))) return null;
+  const vis = visible(r).map(p => p.label), out = outliersOf(r, m, vis);
+  const pts = r.policies.map((pol, i) => {
+    const c = r.final.cpu_time[pol.label], f = finalOf(r, m, pol.label);
+    return { pol, i, c, f };
+  }).filter(p => vis.includes(p.pol.label) && p.c && p.f && isFinite(p.c.mean) && p.f.mean !== null
+                 && !(ui.outliers === "hide" && out.has(p.pol.label)));
+  if (pts.length < 1) return null;
+  const xs = pts.map(p => p.c.mean).filter(v => v > 0);
+  if (xs.length < 2 || Math.max(...xs) / Math.min(...xs) < 1.5) return null;  // same cost for all: nothing to show
+  const S = styleMap(r, ctx.t);
+  const logX = ui.tradeLogX === "auto" ? (xs.length > 1 && Math.max(...xs) / Math.min(...xs) > 20) : ui.tradeLogX === "log";
+  const data = pts.map(({ pol, i, c, f }) => {
+    const color = S[pol.label].color, name = nameOf(r, pol.label);
+    return { type: "scatter", mode: ui.tradeLabels ? "markers+text" : "markers", x: [c.mean], y: [f.mean], name, meta: pol.label,
+             text: [esc(name)], textposition: "top center", textfont: { color: ctx.tok.ink2, size: ctx.font * 0.92 },
+             error_x: { type: "data", symmetric: false, array: [c.high - c.mean], arrayminus: [c.mean - c.low], color, thickness: 1.2, width: 3 },
+             error_y: { type: "data", symmetric: false, array: [f.high - f.mean], arrayminus: [f.mean - f.low], color, thickness: 1.2, width: 3 },
+             marker: { color, size: 11, symbol: S[pol.label].symbol, line: { color, width: 1.5 } },
+             hovertemplate: `${esc(name)}<br>CPU %{x:.3~g} s<br>${esc(yTitle(r, m))} %{y:.4~g}<extra></extra>` };
+  });
+  // Policies no other policy beats on both axes (lower time, better value).
+  const sign = higher(r, m) ? -1 : 1, front = [...pts].sort((a, b) => a.c.mean - b.c.mean);
+  let best = Infinity; const onFront = [];
+  for (const p of front) if (sign * p.f.mean < best) { best = sign * p.f.mean; onFront.push(p); }
+  if (onFront.length > 1) data.push({ type: "scatter", mode: "lines", x: onFront.map(p => p.c.mean), y: onFront.map(p => p.f.mean),
+                                      line: { color: ctx.tok.ink3, width: 1, dash: "dot", shape: "hv" }, name: "Pareto front",
+                                      hoverinfo: "skip" });
+  const yaxis = axis(ctx, { title: { text: customTitle(r, `trade:${m}:y`, `${yTitle(r, m)} at t = T`), font: { color: ctx.tok.ink } },
+                            type: ui.logY ? "log" : "linear" });
+  if (ui.outliers === "crop" && out.size) {
+    const kept = pts.filter(p => !out.has(p.pol.label)).flatMap(p => [p.f.low, p.f.high]);
+    const range = cropRange(kept, ui.logY); if (range) yaxis.range = range;
+  }
+  return { data, layout: base(ctx, `${title(r, m)} against CPU time`, {
+    legend: legend(ctx), showlegend: !ui.tradeLabels || onFront.length > 1, annotations: offScale(r, out, ctx, m),
+    xaxis: axis(ctx, Object.assign({ title: { text: customTitle(r, "trade:x", "CPU time per run (s)"), font: { color: ctx.tok.ink } },
+                                     type: logX ? "log" : "linear" }, logTicks(xs, logX))), yaxis,
+    uirevision: [runKey(r), m, ui.view, ui.ref, ui.logY, ui.outliers, logX, revision].join("|"),
+  }) };
+}
+
+function searchLabels(r) { return Object.keys(r.search || {}).filter(l => (r.search[l].rows || []).length); }
+function figSearch(r, ctx) {
+  const labels = searchLabels(r);
+  if (!labels.length) return null;
+  const label = labels.includes(ui.searchLabel) ? ui.searchLabel : labels[0], s = r.search[label], rows = s.rows;
+  const params = Object.keys(rows[0].params);
+  const values = p => [...new Map(rows.map(x => [JSON.stringify(x.params[p]), x.params[p]])).values()]
+    .sort((a, b) => (typeof a === "number" && typeof b === "number") ? a - b : String(a).localeCompare(String(b)));
+  const varying = params.filter(p => values(p).length > 1).sort((a, b) => values(b).length - values(a).length);
+  if (!varying.length) return null;
+  const metricName = title(r, s.metric || "regret"), lowerBetter = !higher(r, s.metric || "regret");
+  const fixed = params.filter(p => !varying.slice(0, 2).includes(p));
+  const keep = rows.filter(x => fixed.every(p => JSON.stringify(x.params[p]) === JSON.stringify(s.best[p])));
+  const bestRow = rows.reduce((a, b) => ((lowerBetter ? 1 : -1) * (b.mean - a.mean) < 0 ? b : a));
+  const zTitle = `Final ${metricName.toLowerCase()} (mean of ${s.search_runs || "?"} search runs)`;
+  const caption = `${nameOf(r, label)}` + (fixed.length ? `, ${fixed.map(p => `${p}=${fmtParam(s.best[p])}`).join(", ")}` : "");
+  if (varying.length === 1) {
+    const p = varying[0], xsv = values(p), num = xsv.every(v => typeof v === "number" && v > 0);
+    const pts = xsv.map(v => keep.find(x => JSON.stringify(x.params[p]) === JSON.stringify(v))).filter(Boolean);
+    const color = (styleMap(r, ctx.t)[label] || { color: ctx.tok.ink }).color;
+    return { data: [
+      { x: pts.map(x => x.params[p]), y: pts.map(x => x.mean), mode: "lines+markers", name: nameOf(r, label),
+        line: { color, width: ui.width }, marker: { color, size: 8 },
+        error_y: { type: "data", array: pts.map(x => x.std || 0), color, thickness: 1, width: 3 },
+        hovertemplate: `${p}=%{x}<br>%{y:.4~g}<extra></extra>` },
+      { x: [bestRow.params[p]], y: [bestRow.mean], mode: "markers", name: "best", showlegend: false,
+        marker: { symbol: "star", size: 16, color: ctx.tok.ink, line: { color: ctx.tok.surface, width: 1 } }, hoverinfo: "skip" },
+    ], layout: base(ctx, `Search: ${caption}`, { showlegend: false,
+      xaxis: axis(ctx, { title: { text: p, font: { color: ctx.tok.ink } }, type: num && Math.max(...xsv) / Math.min(...xsv) > 20 ? "log" : "linear" }),
+      yaxis: axis(ctx, { title: { text: zTitle, font: { color: ctx.tok.ink } } }), uirevision: label }), caption };
+  }
+  const [px, py] = varying, xv = values(px), yv = values(py);
+  const cell = (a, b) => keep.find(x => JSON.stringify(x.params[px]) === JSON.stringify(a) && JSON.stringify(x.params[py]) === JSON.stringify(b));
+  const z = yv.map(b => xv.map(a => { const c = cell(a, b); return c ? c.mean : null; }));
+  const scale = ctx.t === "dark" ? [[0, "#16263a"], [1, "#9cc3f5"]] : [[0, "#eef4fc"], [1, "#1d5aa6"]];
+  const bx = fmtParam(bestRow.params[px]), by = fmtParam(bestRow.params[py]);
+  return { data: [
+    { type: "heatmap", x: xv.map(fmtParam), y: yv.map(fmtParam), z, colorscale: lowerBetter ? scale : scale.map(([k, c], i, a) => [k, a[a.length - 1 - i][1]]),
+      texttemplate: xv.length * yv.length <= 80 ? "%{z:.3~g}" : "", textfont: { size: ctx.font * 0.85 },
+      colorbar: { title: { text: lowerBetter ? "lower is better" : "higher is better", side: "right", font: { color: ctx.tok.ink2 } },
+                  tickfont: { color: ctx.tok.ink2 }, outlinewidth: 0 },
+      hovertemplate: `${px}=%{x}<br>${py}=%{y}<br>%{z:.4~g}<extra></extra>`, xgap: 2, ygap: 2 },
+  ], layout: base(ctx, `Search: ${caption}`, {
+    shapes: [{ type: "rect", xref: "x", yref: "y", x0: xv.map(fmtParam).indexOf(bx) - 0.5, x1: xv.map(fmtParam).indexOf(bx) + 0.5,
+               y0: yv.map(fmtParam).indexOf(by) - 0.5, y1: yv.map(fmtParam).indexOf(by) + 0.5,
+               line: { color: ctx.t === "dark" ? "#ffffff" : "#000000", width: 3 } }],
+    xaxis: axis(ctx, { title: { text: px, font: { color: ctx.tok.ink } }, type: "category", showgrid: false }),
+    yaxis: axis(ctx, { title: { text: py, font: { color: ctx.tok.ink } }, type: "category", showgrid: false }),
+    uirevision: label }), caption };
+}
+
+const CHARTS = [
+  { id: "curve", build: figCurve },
+  { id: "final", build: figFinal },
+  { id: "trade", build: figTradeoff },
+  { id: "search", build: figSearch },
+];
+
+// ------------------------------------------------------------------ sidebar and folder picker
 function renderList() {
-  const nav = document.getElementById("runs");
-  document.getElementById("count").textContent = `${runs.length} results folder${runs.length === 1 ? "" : "s"}`;
-  nav.innerHTML = runs.map((r, i) => {
+  document.getElementById("count").textContent = `${RUNS.length} results folder${RUNS.length === 1 ? "" : "s"}`;
+  document.getElementById("runs").innerHTML = RUNS.map((r, i) => {
     const p = r.problem || {};
     const meta = [FAMILY[p.family] || p.family, p.horizon ? `T = ${Number(p.horizon).toLocaleString("en-US")}` : null,
                   p.n_runs ? `${p.n_runs} runs` : null].filter(Boolean).join(" · ");
-    return `<button class="run" data-i="${i}" aria-current="${state.current === i}">
-      <span class="name">${esc(r.name)}</span><span class="meta">${esc(meta)}</span>
-      ${r._loaded ? '<span class="tag">opened from disk</span>' : ""}</button>`;
+    return `<button class="run" data-i="${i}" aria-current="${current === i}"><span class="name">${esc(r.name)}</span>
+      <span class="meta">${esc(meta)}</span>${r._loaded ? '<span class="tag">opened from disk</span>' : ""}</button>`;
   }).join("");
 }
-document.getElementById("runs").addEventListener("click", e => {
-  const b = e.target.closest(".run");
-  if (b) select(Number(b.dataset.i));
-});
-
+document.getElementById("runs").addEventListener("click", e => { const b = e.target.closest(".run"); if (b) select(Number(b.dataset.i)); });
 document.getElementById("picker").addEventListener("change", async e => {
   const files = [...e.target.files].filter(f => f.name === "summary.json");
   let first = null;
   for (const file of files) {
     try {
-      const run = JSON.parse(await file.text());
-      if (!run.curves || !run.policies) continue;
-      run.folder = (file.webkitRelativePath || file.name).replace(/\/?summary\.json$/, "");
-      run._loaded = true;
-      const known = runs.findIndex(r => runKey(r) === runKey(run));
-      if (known >= 0) runs[known] = run; else runs.push(run);
-      if (first === null) first = known >= 0 ? known : runs.length - 1;
+      const r = JSON.parse(await file.text());
+      if (!r.curves || !r.policies || !r.steps) continue;
+      r.folder = (file.webkitRelativePath || file.name).replace(/\/?summary\.json$/, "");
+      r._loaded = true;
+      const known = RUNS.findIndex(x => runKey(x) === runKey(r));
+      if (known >= 0) RUNS[known] = r; else RUNS.push(r);
+      if (first === null) first = known >= 0 ? known : RUNS.length - 1;
     } catch (err) { /* not a summary: skip */ }
   }
   e.target.value = "";
-  if (first === null) { alertMain("No summary.json found in that folder. Results folders hold summary.json, written by banditkit run."); return; }
+  if (first === null) { toast("No summary.json in that folder. banditkit run writes one in each results folder."); return; }
   select(first);
 });
 
-function alertMain(text) {
-  const n = document.createElement("p");
-  n.className = "note";
-  n.textContent = text;
-  document.getElementById("main").prepend(n);
-}
-
 // ------------------------------------------------------------------ main view
 function select(i) {
-  state.current = i;
-  const run = runs[i];
-  if (!run.curves[state.metric]) state.metric = Object.keys(run.curves)[0];
-  try { history.replaceState(null, "", "#" + encodeURIComponent(run.name)); } catch (err) { /* file:// in some browsers */ }
+  current = i;
+  const r = run();
+  r.final = r.final || {}; r.curves = r.curves || {};
+  if (!r.curves[ui.metric]) ui.metric = ["regret", "pareto_regret", "reward"].find(m => r.curves[m]) || Object.keys(r.curves)[0];
+  if (ui.ref && !r.policies.some(p => p.label === ui.ref)) ui.ref = "";
+  try { history.replaceState(null, "", "#" + encodeURIComponent(r.name)); } catch (err) { /* file:// */ }
   renderList();
   renderMain();
 }
-
+function seg(name, options, value, disabled) {
+  return `<div class="seg" role="group" aria-label="${esc(name)}" data-key="${name}">${options.map(([v, t, tip]) =>
+    `<button data-v="${esc(v)}" aria-pressed="${String(v) === String(value)}" ${disabled && disabled(v) ? "disabled" : ""}
+      ${tip ? `title="${esc(tip)}"` : ""}>${esc(t)}</button>`).join("")}</div>`;
+}
+function missingHint(r) {
+  const has = m => !!r.curves[m], p = r.problem || {}, out = [];
+  if (!has("pseudo_regret")) out.push('pseudo-regret (track "pseudo_regret")');
+  if (!has("memory_mb")) out.push("peak memory (measure_memory=True)");
+  if ((p.reward_dim || 1) > 1) for (const [k, t] of [["pareto_regret", "Pareto regret"], ["pareto_share", "Pareto-optimal pulls"], ["unfairness", "unfairness"]])
+    if (!has(k)) out.push(`${t} (track "${k}")`);
+  if (p.family === "multi_user" && !has("n_user_clusters")) out.push('number of clusters (track "clusters")');
+  return out;
+}
 function renderMain() {
   const main = document.getElementById("main");
-  if (state.current === null) {
-    main.innerHTML = `<div class="empty"><h1>No results yet</h1>
-      <p>Run an experiment, then rebuild this page:</p>
+  if (current === null) {
+    main.innerHTML = `<div class="empty"><h1>No results yet</h1><p>Run an experiment, then rebuild this page:</p>
       <p><code>python -m banditkit run configs/linear-synthetic.json --generate-dashboard</code></p>
       <p>Or open a results folder with the button on the left.</p></div>`;
     return;
   }
-  const run = runs[state.current];
-  const p = run.problem || {};
-  const facts = [
-    ["Problem", FAMILY[p.family] || p.family], ["Actions K", p.n_actions], ["Dimension d", p.n_features],
+  const r = run(), p = r.problem || {};
+  const facts = [["Problem", FAMILY[p.family] || p.family], ["Actions K", p.n_actions], ["Dimension d", p.n_features],
     ["Users", p.n_users > 1 ? p.n_users : null], ["Objectives", p.reward_dim > 1 ? p.reward_dim : null],
-    ["Horizon T", p.horizon ? Number(p.horizon).toLocaleString("en-US") : null],
-    ["Instances", p.n_instances], ["Runs", p.n_runs], ["Seed", p.seed],
+    ["Horizon T", p.horizon ? Number(p.horizon).toLocaleString("en-US") : null], ["Instances", p.n_instances],
+    ["Runs (total)", p.n_runs], ["Seed", p.seed], ["Stored every", p.log_interval > 1 ? `${p.log_interval} steps` : null],
   ].filter(([, v]) => v !== null && v !== undefined);
-  const metrics = Object.keys(run.curves);
+  const metrics = Object.keys(r.curves), groups = {};
+  for (const m of metrics) (groups[group(r, m)] = groups[group(r, m)] || []).push(m);
+  const notices = r.notices || [], missing = notices.some(n => n.key === "not_stored") ? [] : missingHint(r);
+  const multi = totalRuns(r) > 1, hasSd = metrics.some(m => Object.values(r.curves[m])[0].sd);
   main.innerHTML = `
-    <header>
-      <h1>${esc(run.name)}</h1>
-      ${run.description ? `<p class="desc">${esc(run.description)}</p>` : ""}
-    </header>
+    <header><h1>${esc(r.name)}</h1>${r.description ? `<p class="desc">${esc(r.description)}</p>` : ""}</header>
     <div class="facts">${facts.map(([k, v]) => `<span class="fact">${esc(k)} <b>${esc(v)}</b></span>`).join("")}</div>
-    ${run.command ? `<div class="rerun"><span class="hint">Rerun</span><code id="cmd">${esc(run.command)}</code>
-      <button class="copy" id="copy">Copy</button></div>` : ""}
-    <div class="toolbar">
-      <div class="seg" role="group" aria-label="Metric">${metrics.map(m =>
-        `<button data-m="${m}" aria-pressed="${m === state.metric}">${esc(run.metric_titles[m] || m)}</button>`).join("")}</div>
-      <label class="toggle"><input type="checkbox" id="logx" ${state.logX ? "checked" : ""}> Log-scale steps</label>
-      <span class="hint">Lines: mean over runs. Bands and bars: 95% confidence interval of the mean.</span>
+    ${r.command ? `<div class="rerun"><span class="hint">Rerun</span><code id="cmd">${esc(r.command)}</code>
+      <button class="small" id="copy">Copy</button></div>` : ""}
+    ${notices.length ? `<details class="notices" open><summary>WARNING /!\\ ${notices.length} point${notices.length > 1 ? "s" : ""} to know about this run</summary>
+      <ol>${notices.map(n => `<li><b>${esc(n.title)}.</b> ${esc(n.text)}</li>`).join("")}</ol></details>` : ""}
+    <section class="panel controls" aria-label="What the charts show">
+      <div class="row">${["performance", "multi-objective", "cost", "policy state"].filter(g => groups[g]).map(g =>
+        `<span class="group-name">${esc(g)}</span>${seg("metric", groups[g].map(m => [m, title(r, m).replace(/^Cumulative /, "").replace(/^\w/, c => c.toUpperCase())]), ui.metric)}`).join("")}</div>
+      <div class="row">
+        <div class="field"><span>Values</span>${seg("view", [["cumulative", "Cumulative"], ["per_step", "Per step", "Divided by t"]], ui.view, v => v === "per_step" && !cumulative(ui.metric))}</div>
+        <div class="field"><span>Band</span>${seg("band", [["ci", "95% CI", "95% confidence interval of the mean (1.96 sd / sqrt(n))"], ["sd", "± 1 sd", "Mean plus or minus one standard deviation across runs"], ["none", "None"]], ui.band, v => !multi && v !== "none" || v === "sd" && !hasSd)}</div>
+        <div class="field"><span>Steps</span>${seg("logX", [[false, "Linear"], [true, "Log"]], ui.logX)}</div>
+        <div class="field"><span>Values axis</span>${seg("logY", [[false, "Linear"], [true, "Log"]], ui.logY)}</div>
+        <div class="field"><span>Outliers</span>${seg("outliers", [["show", "Show"], ["crop", "Crop axis", "Axis fitted to the other policies"], ["hide", "Hide"]], ui.outliers)}
+          <input type="number" id="factor" min="1.5" step="0.5" value="${ui.factor}" title="A policy is an outlier when its final value exceeds this many times the median"> × median</div>
+        <label class="field"><span>Relative to</span><select id="ref"><option value="">none</option>${r.policies.map(q =>
+          `<option value="${esc(q.label)}" ${q.label === ui.ref ? "selected" : ""}>${esc(nameOf(r, q.label))}</option>`).join("")}</select></label>
+      </div>
+      <details class="style" id="style-box" ${ui.styleOpen ? "open" : ""}><summary>Style and export</summary><div class="row" style="margin-top:8px">
+        <label class="field"><span>Palette</span><select id="palette">${Object.entries(PALETTES).map(([k, v]) =>
+          `<option value="${k}" ${k === ui.palette ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label>
+        <div class="field"><span>Line styles</span>${seg("lines", [["technique", "By technique"], ["solid", "Solid"]], ui.lines)}</div>
+        <label class="field"><input type="checkbox" id="markers" ${ui.markers ? "checked" : ""}> Markers</label>
+        <label class="field"><span>Line width</span><input type="range" id="width" min="1" max="4" step="0.5" value="${ui.width}"></label>
+        <label class="field"><span>Font</span><input type="number" id="font" min="8" max="20" value="${ui.font}"> px</label>
+        <label class="field"><span>Legend</span><select id="legend">${["top", "bottom", "right", "inside"].map(v =>
+          `<option ${v === ui.legend ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+        <label class="field"><span>Theme</span><select id="theme">${["auto", "light", "dark"].map(v =>
+          `<option ${v === ui.theme ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      </div><div class="row" style="margin-top:8px">
+        <span class="group-name">Export</span>
+        <label class="field"><span>Size</span><input type="number" id="ex-w" min="1" max="20" step="0.1" value="${ui.export.w}"> ×
+          <input type="number" id="ex-h" min="1" max="20" step="0.1" value="${ui.export.h}"> in</label>
+        <label class="field"><span>DPI</span><input type="number" id="ex-dpi" min="72" max="1200" step="1" value="${ui.export.dpi}"></label>
+        <label class="field"><span>Font</span><input type="number" id="ex-font" min="5" max="24" step="0.5" value="${ui.export.font}"> pt</label>
+        <label class="field"><span>Family</span><select id="ex-family"><option value="sans" ${ui.export.family === "sans" ? "selected" : ""}>Helvetica</option>
+          <option value="serif" ${ui.export.family === "serif" ? "selected" : ""}>Times</option></select></label>
+        <label class="field"><span>Background</span><select id="ex-bg"><option ${ui.export.background === "white" ? "selected" : ""}>white</option>
+          <option ${ui.export.background === "transparent" ? "selected" : ""}>transparent</option></select></label>
+        <label class="field"><input type="checkbox" id="ex-title" ${ui.export.title ? "checked" : ""}> Title in the file</label>
+        <button class="small" id="reset-style">Reset style</button>
+      </div></details>
+      ${missing.length ? `<p class="missing">Not stored in this folder: ${esc(missing.join("; "))}.</p>` : ""}
+    </section>
+    <section class="card" id="card-policies"><div class="card-head"><h2>Policies</h2><div class="tools">
+      <button class="small" data-act="all">Show all</button><button class="small" data-act="none">Hide all</button>
+      <button class="small" data-act="reset">Reset names and colors</button></div></div>
+      <p class="caption">Tick to show, edit names and colors (also: click a legend item to hide it, double-click to keep only it,
+        click a legend text or an axis title to rename it).</p><div class="table-wrap" id="table"></div></section>
+    ${chartCard("curve", "Learning curve", "", "")}
+    <div class="grid2">
+      ${chartCard("final", "Final values", "", `${seg("finalKind", [["box", "Box"], ["violin", "Violin"], ["dots", "Mean ± band"]], ui.finalKind, v => !multi && v !== "dots")}`, "short")}
+      ${chartCard("trade", "Cost against performance", "", `${seg("tradeLogX", [["auto", "Auto"], ["linear", "Linear"], ["log", "Log"]], ui.tradeLogX)}
+        <label class="field"><input type="checkbox" id="trade-labels" ${ui.tradeLabels ? "checked" : ""}> Labels</label>`, "short")}
     </div>
-    <div class="grid">
-      <section class="card"><h2 id="curve-title"></h2><div class="chart" id="curves"></div></section>
-      <section class="card"><h2 id="final-title"></h2><div class="chart" id="finals"></div></section>
-    </div>
-    <section class="card"><h2>Policies</h2><div class="table-wrap" id="table"></div></section>`;
-  main.querySelector(".seg").addEventListener("click", e => {
-    const b = e.target.closest("button[data-m]");
-    if (!b) return;
-    state.metric = b.dataset.m;
-    main.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-    drawCharts(); drawTable();
-  });
-  document.getElementById("logx").addEventListener("change", e => { state.logX = e.target.checked; drawCharts(); });
-  const copy = document.getElementById("copy");
-  if (copy) copy.addEventListener("click", () => {
+    ${chartCard("search", "Hyperparameter search", "", searchLabels(r).length > 1 ? `<select id="search-label">${searchLabels(r).map(l =>
+      `<option value="${esc(l)}" ${l === ui.searchLabel ? "selected" : ""}>${esc(nameOf(r, l))}</option>`).join("")}</select>` : "")}`;
+  bindMain();
+  drawAll();
+}
+function chartCard(id, heading, caption, tools, size) {
+  return `<section class="card" id="card-${id}"><div class="card-head"><h2 id="h-${id}">${esc(heading)}</h2><div class="tools">${tools}
+    <button class="small" data-export="${id}" data-format="png">PNG</button><button class="small" data-export="${id}" data-format="svg">SVG</button>
+    <button class="small" data-export="${id}" data-format="pdf">PDF</button><button class="small" data-export="${id}" data-format="csv">CSV</button>
+    </div></div><p class="caption" id="c-${id}">${esc(caption)}</p><div class="chart ${size || ""}" id="${id}"></div></section>`;
+}
+function bindMain() {
+  const main = document.getElementById("main"), r = run();
+  main.querySelectorAll(".seg").forEach(s => s.addEventListener("click", e => {
+    const b = e.target.closest("button[data-v]");
+    if (!b || b.disabled) return;
+    const key = s.dataset.key, raw = b.dataset.v;
+    ui[key] = raw === "true" ? true : raw === "false" ? false : raw;
+    s.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    if (key === "metric") { if (!cumulative(ui.metric)) ui.view = "cumulative"; save(); renderMain(); return; }
+    save(); drawAll();
+  }));
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+  on("style-box", "toggle", e => { ui.styleOpen = e.target.open; save(); });
+  on("factor", "change", e => { ui.factor = Math.max(1.5, Number(e.target.value) || 4); save(); drawAll(); });
+  on("ref", "change", e => { ui.ref = e.target.value; save(); drawAll(); });
+  on("palette", "change", e => { ui.palette = e.target.value; save(); drawAll(); });
+  on("markers", "change", e => { ui.markers = e.target.checked; save(); drawAll(); });
+  on("width", "input", e => { ui.width = Number(e.target.value); save(); drawAll(); });
+  on("font", "change", e => { ui.font = Math.min(20, Math.max(8, Number(e.target.value) || 12)); save(); drawAll(); });
+  on("legend", "change", e => { ui.legend = e.target.value; save(); drawAll(); });
+  on("theme", "change", e => { ui.theme = e.target.value; applyTheme(); save(); drawAll(); });
+  on("trade-labels", "change", e => { ui.tradeLabels = e.target.checked; save(); drawAll(); });
+  on("search-label", "change", e => { ui.searchLabel = e.target.value; save(); drawAll(); });
+  for (const [id, key, num] of [["ex-w", "w", 1], ["ex-h", "h", 1], ["ex-dpi", "dpi", 1], ["ex-font", "font", 1],
+                                 ["ex-family", "family", 0], ["ex-bg", "background", 0]])
+    on(id, "change", e => { ui.export[key] = num ? Number(e.target.value) : e.target.value; save(); });
+  on("ex-title", "change", e => { ui.export.title = e.target.checked; save(); });
+  on("reset-style", "click", () => { const keep = { metric: ui.metric }; Object.assign(ui, JSON.parse(JSON.stringify(DEFAULT_UI)), keep);
+                                     applyTheme(); save(); renderMain(); });
+  on("copy", "click", e => {
     const text = document.getElementById("cmd").textContent;
-    navigator.clipboard.writeText(text).then(() => { copy.textContent = "Copied"; setTimeout(() => copy.textContent = "Copy", 1500); },
-      () => { const r = document.createRange(); r.selectNodeContents(document.getElementById("cmd"));
-              const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+    navigator.clipboard.writeText(text).then(() => toast("Command copied"), () => toast("Select the command and copy it"));
   });
-  drawCharts();
-  drawTable();
+  document.getElementById("card-policies").querySelector(".tools").addEventListener("click", e => {
+    const act = e.target.dataset.act, st = rs(r);
+    if (act === "all") st.hidden = [];
+    if (act === "none") st.hidden = r.policies.map(q => q.label);
+    if (act === "reset") { st.names = {}; st.colors = {}; st.titles = {}; }
+    if (act) { revision++; save(); renderMain(); }
+  });
+  main.querySelectorAll("[data-export]").forEach(b => b.addEventListener("click", () => exportChart(b.dataset.export, b.dataset.format)));
 }
 
-function plotLayout(extra) {
-  const ink = cssVar("--ink"), ink2 = cssVar("--ink-2"), line = cssVar("--line");
-  return Object.assign({
-    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
-    font: { family: cssVar("--sans"), size: 12, color: ink2 },
-    margin: { l: 56, r: 12, t: 8, b: 44 },
-    hoverlabel: { font: { color: ink } },
-    xaxis: { gridcolor: line, linecolor: line, zeroline: false, tickfont: { color: ink2 } },
-    yaxis: { gridcolor: line, linecolor: line, zeroline: false, tickfont: { color: ink2 } },
-    legend: { orientation: "h", y: -0.18, font: { color: ink } },
-  }, extra);
-}
-
+// ------------------------------------------------------------------ drawing
+const CONFIG = {
+  displaylogo: false, responsive: true, editable: true,
+  edits: { annotationPosition: false, annotationTail: false, annotationText: false, axisTitleText: true, colorbarPosition: false,
+           colorbarTitleText: false, legendPosition: true, legendText: true, shapePosition: false, titleText: false },
+  modeBarButtonsToRemove: ["select2d", "lasso2d", "toImage"],
+};
+function drawAll() { drawTable(); drawCharts(); }
 function drawCharts() {
-  const run = runs[state.current], m = state.metric, title = run.metric_titles[m] || m;
-  document.getElementById("curve-title").textContent = `${title} over the steps`;
-  document.getElementById("final-title").textContent = `Final ${title.charAt(0).toLowerCase() + title.slice(1)}`;
+  const r = run();
   if (!window.Plotly) {
-    for (const id of ["curves", "finals"]) document.getElementById(id).innerHTML =
-      '<p class="note">Charts need plotly.js, loaded from the internet. Rebuild with <code>--offline</code> to embed it. The table below works without it.</p>';
+    for (const c of CHARTS) document.getElementById(c.id).innerHTML =
+      '<p class="note">Charts need plotly.js, loaded from the internet. Rebuild with <code>--offline</code> to embed it.</p>';
     return;
   }
-  const x = run.steps, traces = [];
-  for (const pol of run.policies) {
-    const c = run.curves[m][pol.label];
-    if (!c) continue;
-    traces.push({ x, y: c.high, mode: "lines", line: { width: 0 }, hoverinfo: "skip", showlegend: false, legendgroup: pol.label });
-    traces.push({ x, y: c.low, mode: "lines", line: { width: 0 }, fill: "tonexty", fillcolor: hexToRgba(pol.color, 0.16),
-                  hoverinfo: "skip", showlegend: false, legendgroup: pol.label });
-    traces.push({ x, y: c.mean, mode: "lines", name: pol.label, legendgroup: pol.label,
-                  line: { color: pol.color, width: 2, dash: pol.dash },
-                  hovertemplate: `${esc(pol.label)}: %{y:.4g}<extra></extra>` });
+  const ctx = ctxFor(false);
+  for (const c of CHARTS) {
+    const el = document.getElementById(c.id), card = document.getElementById("card-" + c.id);
+    const fig = c.build(r, ctx);
+    if (!fig) { card.hidden = true; Plotly.purge(el); continue; }
+    card.hidden = false;
+    setCaption(c.id, r, fig);
+    const config = fig.layout.noYTitle ? Object.assign({}, CONFIG, { edits: Object.assign({}, CONFIG.edits, { axisTitleText: false }) }) : CONFIG;
+    delete fig.layout.noYTitle;
+    Plotly.react(el, fig.data, fig.layout, config);
+    if (!el._bound) { bindChart(el, c.id); el._bound = true; }
   }
-  Plotly.react("curves", traces, plotLayout({
-    hovermode: "x unified",
-    xaxis: Object.assign(plotLayout().xaxis, { title: { text: "Step" }, type: state.logX ? "log" : "linear" }),
-    yaxis: Object.assign(plotLayout().yaxis, { title: { text: title } }),
-  }), { displaylogo: false, responsive: true, modeBarButtonsToRemove: ["select2d", "lasso2d"] });
-
-  const rows = run.policies.map(pol => ({ pol, f: run.final[m][pol.label] })).filter(r => r.f && isFinite(r.f.mean));
-  const sign = LOWER_IS_BETTER.has(m) ? 1 : -1;
-  rows.sort((a, b) => sign * (a.f.mean - b.f.mean));
-  rows.reverse();  // best on top
-  Plotly.react("finals", [{
-    type: "scatter", mode: "markers", orientation: "h",
-    x: rows.map(r => r.f.mean), y: rows.map(r => r.pol.label),
-    error_x: { type: "data", symmetric: false, array: rows.map(r => r.f.high - r.f.mean),
-               arrayminus: rows.map(r => r.f.mean - r.f.low), color: cssVar("--ink-3"), thickness: 1.5, width: 4 },
-    marker: { color: rows.map(r => r.pol.color), size: 10, symbol: rows.map(r => r.pol.symbol),
-              line: { color: rows.map(r => r.pol.color), width: 1.5 } },
-    hovertemplate: "%{y}: %{x:.4g}<extra></extra>", showlegend: false,
-  }], plotLayout({
-    margin: { l: 10, r: 16, t: 8, b: 44 },
-    xaxis: Object.assign(plotLayout().xaxis, { title: { text: title } }),
-    yaxis: Object.assign(plotLayout().yaxis, { automargin: true, tickfont: { color: cssVar("--ink") } }),
-  }), { displaylogo: false, responsive: true, modeBarButtonsToRemove: ["select2d", "lasso2d"] });
+  document.querySelectorAll(".grid2").forEach(g => {
+    const single = [...g.children].filter(c => !c.hidden).length < 2;
+    if (g.classList.contains("single") !== single) {
+      g.classList.toggle("single", single);
+      g.querySelectorAll(".chart").forEach(el => { if (el.data) Plotly.Plots.resize(el); });
+    }
+  });
 }
-
+function setCaption(id, r, fig) {
+  const m = ui.metric, n = totalRuns(r), bandText = ui.band === "none" || n < 2 ? "" :
+    ui.band === "sd" ? " Band: ± 1 standard deviation across runs." : " Band: 95% confidence interval of the mean (1.96 sd / √n).";
+  const refText = ui.ref ? ` Divided by the mean of ${nameOf(r, ui.ref)} at the same step.` : "";
+  const text = {
+    curve: `Mean over ${n} run${n > 1 ? "s" : ""}.${bandText}${refText}`,
+    final: n < 2 ? "One run: its final value per policy." : ui.finalKind === "dots" ?
+      `Mean at the last step and its ${ui.band === "sd" ? "± 1 sd" : "95% interval"}.${ranked(r, m) ? " Best on top." : ""}` :
+      `Distribution over the ${n} runs at the last step: box = quartiles, dashed line = mean, dots = runs.${ranked(r, m) ? " Best on top." : ""}`,
+    trade: "Total CPU time per run against the final value (means and 95% intervals). The dotted line joins the policies no other one beats on both.",
+    search: fig.caption ? `${fig.caption}. Each combination ran on other seeds than the reported runs; the outlined value (star on a line) is the one kept.` : "",
+  }[id];
+  document.getElementById("c-" + id).textContent = text;
+  const heads = { curve: `${yTitle(r, m)} over the steps`, final: `${yTitle(r, m)} at the last step`,
+                  trade: `${yTitle(r, m)} against CPU time`, search: "Hyperparameter search" };
+  document.getElementById("h-" + id).textContent = heads[id];
+}
+function bindChart(el, id) {
+  el.on("plotly_legendclick", ev => {
+    const label = ev.data[ev.curveNumber] && ev.data[ev.curveNumber].meta;
+    if (!label) return true;
+    const st = rs(run()), k = st.hidden.indexOf(label);
+    if (k >= 0) st.hidden.splice(k, 1); else st.hidden.push(label);
+    revision++; save(); drawAll();
+    return false;
+  });
+  el.on("plotly_legenddoubleclick", ev => {
+    const label = ev.data[ev.curveNumber] && ev.data[ev.curveNumber].meta;
+    if (!label) return true;
+    const r = run(), st = rs(r), others = r.policies.map(q => q.label).filter(l => l !== label);
+    st.hidden = others.every(l => st.hidden.includes(l)) ? [] : others;
+    revision++; save(); drawAll();
+    return false;
+  });
+  el.on("plotly_restyle", ev => {
+    const [upd, idx] = ev || [];
+    if (!upd || upd.name === undefined || !idx) return;
+    const st = rs(run());
+    idx.forEach((ti, k) => { const label = el.data[ti] && el.data[ti].meta;
+                             if (label) st.names[label] = Array.isArray(upd.name) ? upd.name[k] : upd.name; });
+    save(); drawTable(); setTimeout(drawCharts, 0);
+  });
+  el.on("plotly_relayout", upd => {
+    const r = run(), m = ui.metric, st = rs(r);
+    const keys = { curve: { x: "curve:x", y: `curve:${m}:${ui.view}:${ui.ref}:y` },
+                   final: { x: `final:${m}:${ui.view}:${ui.ref}:x` }, trade: { x: "trade:x", y: `trade:${m}:y` } }[id] || {};
+    let changed = false;
+    for (const ax of ["x", "y"]) {
+      const v = upd[`${ax}axis.title.text`];
+      if (v !== undefined && keys[ax]) { st.titles[keys[ax]] = v; changed = true; }
+    }
+    if (changed) save();
+  });
+}
 function drawTable() {
-  const run = runs[state.current], m = state.metric, title = run.metric_titles[m] || m;
-  const sign = LOWER_IS_BETTER.has(m) ? 1 : -1;
-  const rows = run.policies.map(pol => ({ pol, f: (run.final[m] || {})[pol.label] }));
-  rows.sort((a, b) => sign * ((a.f?.mean ?? Infinity) - (b.f?.mean ?? Infinity)));
+  const r = run(), m = ui.metric, st = rs(r), t = theme();
+  const sign = higher(r, m) ? -1 : 1, hasCpu = !!r.final.cpu_time, S = styleMap(r, t);
+  const rows = r.policies.map((pol, i) => ({ pol, i, f: finalOf(r, m, pol.label) }));
+  if (ranked(r, m)) rows.sort((a, b) => sign * ((a.f?.mean ?? Infinity) - (b.f?.mean ?? Infinity)));
   const notes = pol => (pol.notes || []).filter(([kind]) => kind !== "from_problem")
     .map(([kind, text]) => `<span class="badge" title="${esc(text)}">${esc(kind)}: ${esc(text.split(" (")[0])}</span>`).join("");
-  const best = pol => pol.best_params && Object.keys(pol.best_params).length
-    ? `<span class="badge info">searched: ${esc(Object.entries(pol.best_params).map(([k, v]) => `${k}=${fmtParam(v)}`).join(", "))}</span>` : "";
-  document.getElementById("table").innerHTML = `<table>
-    <thead><tr><th>Policy</th><th class="num">Final ${esc(title.toLowerCase())}</th><th class="num">95% interval</th>
-      <th>Hyperparameters (changed)</th><th>Notes</th></tr></thead>
-    <tbody>${rows.map(({ pol, f }) => `<tr>
-      <td><span class="swatch" style="background:${esc(pol.color)}"></span>${esc(pol.label)}</td>
-      <td class="num">${f ? fmt(f.mean) : "–"}</td>
-      <td class="num">${f ? `${fmt(f.low)} to ${fmt(f.high)}` : "–"}</td>
-      <td class="params">${esc(Object.entries(pol.params || {})
-        .map(([k, v]) => `${k}=${fmtParam(v)}`).join(", ") || "defaults")}</td>
-      <td>${best(pol)}${notes(pol)}</td></tr>`).join("")}</tbody></table>`;
+  const searched = pol => pol.best_params && Object.keys(pol.best_params).length ? `<span class="badge info">searched: ${esc(
+    Object.entries(pol.best_params).map(([k, v]) => `${k}=${fmtParam(v)}`).join(", "))}</span>` : "";
+  const toHex = c => /^#[0-9a-f]{6}$/i.test(c) ? c : "#888888";
+  let rank = 0;
+  document.getElementById("table").innerHTML = `<table><thead><tr><th>Show</th><th>Color</th><th>Name</th>
+    ${ranked(r, m) ? "<th class=num>Rank</th>" : ""}<th class="num">${esc(yTitle(r, m))} at T</th><th class="num">Interval</th>
+    ${hasCpu ? '<th class="num">CPU per run (s)</th>' : ""}<th>Hyperparameters (changed)</th><th>Notes</th></tr></thead>
+    <tbody>${rows.map(({ pol, i, f }) => {
+      const off = st.hidden.includes(pol.label), c = hasCpu ? r.final.cpu_time[pol.label] : null;
+      if (!off && f && f.mean !== null) rank++;
+      return `<tr class="${off ? "off" : ""}" data-label="${esc(pol.label)}">
+      <td><input type="checkbox" data-role="show" ${off ? "" : "checked"} aria-label="Show ${esc(pol.label)}"></td>
+      <td><input type="color" data-role="color" value="${toHex(S[pol.label].color)}" aria-label="Color of ${esc(pol.label)}"></td>
+      <td><input type="text" data-role="name" value="${esc(nameOf(r, pol.label))}" placeholder="${esc(pol.label)}" aria-label="Name of ${esc(pol.label)}"></td>
+      ${ranked(r, m) ? `<td class="num">${off || !f || f.mean === null ? "–" : rank}</td>` : ""}
+      <td class="num">${f ? fmt(f.mean) : "–"}</td><td class="num">${f && totalRuns(r) > 1 ? `${fmt(f.low)} to ${fmt(f.high)}` : "–"}</td>
+      ${hasCpu ? `<td class="num">${c ? fmt(c.mean) : "–"}</td>` : ""}
+      <td class="params">${esc(Object.entries(pol.params || {}).map(([k, v]) => `${k}=${fmtParam(v)}`).join(", ") || "defaults")}</td>
+      <td>${searched(pol)}${notes(pol)}</td></tr>`; }).join("")}</tbody></table>`;
+  const table = document.getElementById("table");
+  table.onchange = e => {
+    const tr = e.target.closest("tr[data-label]");
+    if (!tr) return;
+    const label = tr.dataset.label, role = e.target.dataset.role;
+    if (role === "show") { const k = st.hidden.indexOf(label); if (e.target.checked && k >= 0) st.hidden.splice(k, 1);
+                           if (!e.target.checked && k < 0) st.hidden.push(label); revision++; }
+    if (role === "name") { const v = e.target.value.trim(); if (v && v !== label) st.names[label] = v; else delete st.names[label]; }
+    if (role === "color") st.colors[label] = e.target.value;
+    save(); drawAll();
+  };
+}
+
+// ------------------------------------------------------------------ export
+function download(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function fileName(id, ext) {
+  const r = run(), slug = s => String(s).replace(/[^A-Za-z0-9_.-]+/g, "_");
+  return `${slug(r.name)}_${id}${id === "search" ? "" : "_" + slug(ui.metric)}.${ext}`;
+}
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xffffffff; for (const b of bytes) c = CRC[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function dataUrlBytes(url) { const bin = atob(url.split(",")[1]); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+function pngWithDpi(png, dpi) {
+  // pHYs chunk right after IHDR (8-byte signature + 25-byte IHDR chunk), so that other programs read the DPI.
+  const ppm = Math.round(dpi / 0.0254), chunk = new Uint8Array(21), view = new DataView(chunk.buffer);
+  view.setUint32(0, 9); chunk.set([112, 72, 89, 115], 4); view.setUint32(8, ppm); view.setUint32(12, ppm); chunk[16] = 1;
+  view.setUint32(17, crc32(chunk.subarray(4, 17)));
+  const out = new Uint8Array(png.length + 21);
+  out.set(png.subarray(0, 33)); out.set(chunk, 33); out.set(png.subarray(33), 54);
+  return out;
+}
+function rasterPdf(jpeg, wpx, hpx, wpt, hpt) {
+  // Smallest valid PDF: one page showing one JPEG image (used when the vector PDF library cannot load).
+  const enc = s => new TextEncoder().encode(s), parts = [], offsets = [];
+  let size = 0;
+  const push = p => { parts.push(p); size += p.length; };
+  const obj = (n, body, stream) => { offsets[n] = size; push(enc(`${n} 0 obj\n${body}\n`));
+    if (stream) { push(enc("stream\n")); push(stream); push(enc("\nendstream\n")); } push(enc("endobj\n")); };
+  push(enc("%PDF-1.4\n"));
+  obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+  obj(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wpt} ${hpt}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`);
+  const content = enc(`q ${wpt} 0 0 ${hpt} 0 0 cm /Im0 Do Q`);
+  obj(4, `<< /Length ${content.length} >>`, content);
+  obj(5, `<< /Type /XObject /Subtype /Image /Width ${wpx} /Height ${hpx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>`, jpeg);
+  const xref = size;
+  push(enc(`xref\n0 6\n0000000000 65535 f \n${[1, 2, 3, 4, 5].map(n => String(offsets[n]).padStart(10, "0") + " 00000 n \n").join("")}`));
+  push(enc(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`));
+  return new Blob(parts, { type: "application/pdf" });
+}
+function loadScript(src) {
+  return new Promise((resolve, reject) => { const s = document.createElement("script"); s.src = src; s.onload = resolve;
+                                            s.onerror = reject; document.head.append(s); });
+}
+async function pdfLibrary() {
+  if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.svg) return window.jspdf.jsPDF;
+  try { if (!window.jspdf) await loadScript(JSPDF_URL); await loadScript(SVG2PDF_URL); } catch (err) { return null; }
+  return window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.svg ? window.jspdf.jsPDF : null;
+}
+function csvOf(id) {
+  const r = run(), m = ui.metric, vis = visible(r), q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const g = v => (v === null || v === undefined || !isFinite(v)) ? "" : +Number(v).toPrecision(6);
+  if (id === "curve") {
+    const cols = vis.flatMap(p => { const n = nameOf(r, p.label); return [`${n} mean`, `${n} low`, `${n} high`]; });
+    const series = vis.map(p => seriesOf(r, m, p.label));
+    return [["step", ...cols].map(q).join(","), ...r.steps.map((s, i) => [s, ...series.flatMap(x =>
+      [g(x.mean[i]), x.low ? g(x.low[i]) : "", x.high ? g(x.high[i]) : ""])].join(","))].join("\n");
+  }
+  if (id === "final" || id === "trade") {
+    return [["policy", "mean", "low", "high", "cpu_mean", "values"].map(q).join(","), ...vis.map(p => {
+      const f = finalOf(r, m, p.label) || {}, c = (r.final.cpu_time || {})[p.label] || {};
+      return [q(nameOf(r, p.label)), g(f.mean), g(f.low), g(f.high), g(c.mean), q((f.values || []).map(g).join(" "))].join(",");
+    })].join("\n");
+  }
+  const labels = searchLabels(r), label = labels.includes(ui.searchLabel) ? ui.searchLabel : labels[0], s = r.search[label];
+  const params = Object.keys(s.rows[0].params);
+  return [[...params, "mean", "std"].map(q).join(","), ...s.rows.map(x => [...params.map(k => q(fmtParam(x.params[k]))), x.mean, x.std].join(","))].join("\n");
+}
+async function exportChart(id, format) {
+  if (format === "csv") { download(new Blob([csvOf(id)], { type: "text/csv" }), fileName(id, "csv")); return; }
+  if (!window.Plotly) { toast("Exports need plotly.js"); return; }
+  const chart = CHARTS.find(c => c.id === id), fig = chart.build(run(), ctxFor(true));
+  if (!fig) return;
+  const ex = ui.export, wpx = Math.round(ex.w * 96), hpx = Math.round(ex.h * 96);
+  const holder = document.createElement("div");
+  holder.style.cssText = `position:fixed;left:-20000px;top:0;width:${wpx}px;height:${hpx}px`;
+  document.body.append(holder);
+  try {
+    const layout = Object.assign({}, fig.layout, { width: wpx, height: hpx, uirevision: undefined });
+    delete layout.noYTitle;
+    await Plotly.newPlot(holder, fig.data, layout, { staticPlot: true });
+    if (format === "png") {
+      const url = await Plotly.toImage(holder, { format: "png", width: wpx, height: hpx, scale: ex.dpi / 96 });
+      download(new Blob([pngWithDpi(dataUrlBytes(url), ex.dpi)], { type: "image/png" }), fileName(id, "png"));
+    } else if (format === "svg") {
+      const url = await Plotly.toImage(holder, { format: "svg", width: wpx, height: hpx });
+      download(new Blob([decodeURIComponent(url.slice(url.indexOf(",") + 1))], { type: "image/svg+xml" }), fileName(id, "svg"));
+    } else {
+      const jsPDF = await pdfLibrary(), wpt = ex.w * 72, hpt = ex.h * 72;
+      if (jsPDF) {
+        const url = await Plotly.toImage(holder, { format: "svg", width: wpx, height: hpx });
+        const svg = new DOMParser().parseFromString(decodeURIComponent(url.slice(url.indexOf(",") + 1)), "image/svg+xml").documentElement;
+        const doc = new jsPDF({ orientation: wpt >= hpt ? "landscape" : "portrait", unit: "pt", format: [wpt, hpt] });
+        holder.append(svg);  // svg2pdf reads the styles of an element in the page
+        await doc.svg(svg, { x: 0, y: 0, width: wpt, height: hpt });
+        download(doc.output("blob"), fileName(id, "pdf"));
+      } else {
+        const url = await Plotly.toImage(holder, { format: "jpeg", width: wpx, height: hpx, scale: ex.dpi / 96 });
+        const img = new Image();
+        img.src = url;
+        await img.decode();  // the true pixel size of the JPEG
+        download(rasterPdf(dataUrlBytes(url), img.naturalWidth, img.naturalHeight, wpt, hpt), fileName(id, "pdf"));
+        toast(`PDF as an image at ${ex.dpi} DPI: the vector PDF library could not be loaded (offline?)`);
+      }
+    }
+  } catch (err) { toast("Export failed: " + err.message); }
+  finally { Plotly.purge(holder); holder.remove(); }
 }
 
 // ------------------------------------------------------------------ start
-const wanted = decodeURIComponent(location.hash.slice(1));
+applyTheme();
 renderList();
-if (runs.length) select(Math.max(0, runs.findIndex(r => r.name === wanted)));
+const wanted = decodeURIComponent(location.hash.slice(1));
+if (RUNS.length) select(Math.max(0, RUNS.findIndex(r => r.name === wanted)));
 else renderMain();
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (state.current !== null) drawCharts(); });
+window.addEventListener("hashchange", () => {
+  const i = RUNS.findIndex(r => r.name === decodeURIComponent(location.hash.slice(1)));
+  if (i >= 0 && i !== current) select(i);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (current !== null && ui.theme === "auto") drawAll(); });
 </script>
 </body>
 </html>
