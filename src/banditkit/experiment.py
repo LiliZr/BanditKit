@@ -271,6 +271,7 @@ class Experiment:
         configs = [_RunConfig(spec, self.horizon, self.weights, steps, self.timeout, self.train_freq, self.track,
                               self.measure_memory) for spec in self.specs]
         n_workers = (os.cpu_count() or 1) if self.n_jobs == -1 else self.n_jobs
+        self._notices_at_start = self.notices()
         if self.verbose:
             self._say_plan()
 
@@ -387,40 +388,144 @@ class Experiment:
                 out[label] = (type(policy).__name__, left)
         return out
 
+    def _diagnostic_keys(self) -> Tuple[List[str], List[str]]:
+        """Scalar and per-action diagnostics the policies can record (``track="clusters"`` / ``"estimates"``)."""
+        scalar, per_action = [], []
+        for policy in self.policies.values():
+            try:
+                probe = policy.clone()
+                probe.reset(self.spec, self.weights, seed=0)
+                diag = probe.diagnostics()
+            except Exception:  # a policy that cannot report before its first step reports nothing
+                continue
+            for k, v in diag.items():
+                (per_action if np.ndim(v) > 0 else scalar).append(k)
+        return sorted(set(scalar)), sorted(set(per_action))
+
+    def notices(self) -> List[Dict[str, str]]:
+        """What to know before reading the results of this run: one ``{"key", "title", "text"}`` per point.
+
+        Printed as a numbered warning when the run starts (``verbose >= 1``) and stored in
+        ``results.meta["notices"]`` (the dashboard shows them).
+        """
+        out: List[Dict[str, str]] = []
+
+        def add(key: str, title: str, text: str) -> None:
+            out.append({"key": key, "title": title, "text": text})
+
+        grids = self._grids or {}
+        defaults = {label: v for label, v in self._defaults_in_use().items() if not grids.get(label)}
+        if defaults:
+            cls, params = next(iter(defaults.values()))
+            key = next(iter(params))
+            example = f"{cls}({key}={_fmt(_EXAMPLE_VALUES.get(key, params[key]))})"
+            add("defaults", "Default hyperparameters",
+                f"{_list(list(defaults))} {'keeps' if len(defaults) == 1 else 'keep'} the values of "
+                f"{'its paper' if len(defaults) == 1 else 'their papers'} (alpha=1: theoretical confidence "
+                "bounds). These values are safe in theory but often explore too much in practice. To fit them "
+                "to this problem, run a grid search (param_grid=True, or \"param_grid\": true in a config file) "
+                f"or set them, e.g. {example}.")
+        searched = {label: g for label, g in grids.items() if g}
+        if searched:
+            n = sum(int(np.prod([len(v) for v in g.values()])) for g in searched.values())
+            add("search", "Grid search",
+                f"{_list(list(searched))}: {n} combinations run {self.search_runs} time(s) per instance before the "
+                f"reported runs (criterion: final {self.search_metric}). The values found fit this problem only: "
+                "report them as such.")
+        assumed: Dict[str, List[str]] = {}
+        for label, notes in self._notes.items():
+            for kind, text in notes:
+                if kind == "assumed":
+                    assumed.setdefault(text, []).append(label)
+        if assumed:
+            add("assumed", "Assumed constants",
+                "The environment does not give them: "
+                + "; ".join(f"{text} for {_list(labels)}" for text, labels in assumed.items())
+                + ". Pass the true values to the policies if you know them (help(policy) lists the parameters).")
+
+        missing = []
+        if "pseudo_regret" not in self.track:
+            missing.append('pseudo-regret (track "pseudo_regret")')
+        if self.spec.reward_dim > 1:
+            for name, what in (("pareto_regret", "Pareto regret"), ("pareto_share", "share of Pareto-optimal pulls"),
+                               ("unfairness", "unfairness"), ("reward_vec", "reward per objective")):
+                if name not in self.track:
+                    missing.append(f'{what} (track "{name}")')
+        scalar, per_action = self._diagnostic_keys()
+        # Diagnostics that cannot change on this problem: clusters of a single user, buckets nobody uses.
+        if (self.spec.n_users or 1) <= 1:
+            scalar = [k for k in scalar if k != "n_user_clusters"]
+        if not any(p.get_params().get("n_buckets") for p in self.policies.values()):
+            scalar = [k for k in scalar if k != "n_buckets"]
+        if scalar and "clusters" not in self.track:
+            missing.append(f'{", ".join(scalar)} over time (track "clusters")')
+        if per_action and "estimates" not in self.track:
+            missing.append('per-action estimates (track "estimates")')
+        if "actions" not in self.track:
+            missing.append('action of every step (track "actions")')
+        if not self.measure_memory:
+            missing.append("peak memory (measure_memory=True)")
+        if missing:
+            text = "; ".join(missing)
+            add("not_stored", "Not stored",
+                f"{text[0].upper() + text[1:]}. The dashboard and the figures cannot show what is not stored; "
+                "the brackets say how to store it (in a config file: \"track\": [...] or \"measure_memory\": true "
+                "in \"experiment\").")
+
+        total = self.n_runs * self.n_instances
+        if total == 1:
+            add("runs", "One run", "One run per policy: no confidence interval and no spread across runs. "
+                                   "Increase n_runs, or give several instances.")
+        elif total < 5:
+            add("runs", "Few runs", f"{total} runs per policy: confidence intervals are wide. Increase n_runs.")
+        if self.log_interval > 1:
+            add("log_interval", "Curves thinned",
+                f"Curves are stored every {self.log_interval} steps (log_interval={self.log_interval}) "
+                "and at the last step.")
+        if self.timeout is not None:
+            add("timeout", "Timeout", f"A run stops after {_fmt(self.timeout)} s of policy CPU time; its curves "
+                                      "are NaN after that.")
+        if self.measure_memory:
+            add("memory", "Slower timings", "measure_memory=True slows Python code about fivefold: compare CPU "
+                                            "times only between runs with the same setting.")
+        if self.n_jobs != 1:
+            add("n_jobs", "Parallel runs", f"With n_jobs={self.n_jobs}, each process uses one BLAS thread: "
+                                           "compare CPU times only between runs with the same n_jobs.")
+        if self.train_freq > 1:
+            add("train_freq", "Batched updates", f"Policies are updated every {self.train_freq} steps with the "
+                                                 f"buffered observations (train_freq={self.train_freq}).")
+        if self.checkpoint_dir is not None:
+            add("checkpoint", "Checkpoints", f"Finished runs saved in {self.checkpoint_dir} are reloaded instead "
+                                             "of run again: empty the folder after changing the code or the settings.")
+        return out
+
     def _say_plan(self) -> None:
         where = f" on {self.n_instances} instances" if self.n_instances > 1 else ""
         runs = f"{self.n_runs} run" + ("s" if self.n_runs > 1 else "")
         _say(f"banditkit: {len(self.policies)} policies, {runs}{where}, horizon {self.horizon}.")
-        if not self._grids:
-            defaults = self._defaults_in_use()
-            if defaults:
-                _warn_defaults(defaults)
-            else:
-                _say("Hyperparameters as given.")
-            for label, notes in self._notes.items():
-                # Defaults, arbitrary or assumed values first (they deserve attention), then values read
-                # from the problem.
-                noted = {text.split("=", 1)[0] for kind, text in notes if kind == "arbitrary"}
-                left = {k: v for k, v in defaults.get(label, ("", {}))[1].items() if k not in noted}
-                parts = [f"default {', '.join(f'{k}={_fmt(v)}' for k, v in left.items())}"] if left else []
-                parts += [f"{text} [{kind}]" for kind, text in notes if kind != "from_problem"]
-                known = [text.split(": ", 1)[-1] for kind, text in notes if kind == "from_problem"]
-                if known:
-                    parts.append(", ".join(known) + " from the environment")
-                if parts:
-                    _say(f"  {label}: " + "; ".join(parts))
-            return
-        _say(f"Hyperparameters: search of the best values for this problem (param_grid, slower). Each combination "
-             f"runs {self.search_runs} time(s) per instance, on other seeds than the reported runs; "
-             f"criterion: final {self.search_metric}.")
-        for label, grid in self._grids.items():
-            if not grid:
-                _say(f"  {label}: nothing to search, parameters as given")
+        notices = getattr(self, "_notices_at_start", None) or self.notices()
+        if notices:
+            _say(_format_notices(notices))
+        defaults = self._defaults_in_use()
+        _say("Hyperparameters of each policy:")
+        for label, notes in self._notes.items():
+            grid = (self._grids or {}).get(label)
+            if grid:
+                n = int(np.prod([len(v) for v in grid.values()]))
+                desc = ", ".join(f"{k} in {_fmt(min(v))}..{_fmt(max(v))} ({len(v)})" if len(v) > 1
+                                 else f"{k}={_fmt(v[0])}" for k, v in grid.items())
+                _say(f"  {label}: grid search, {n} combinations ({desc})")
                 continue
-            n = int(np.prod([len(v) for v in grid.values()]))
-            desc = ", ".join(f"{k} in {_fmt(min(v))}..{_fmt(max(v))} ({len(v)})" if len(v) > 1 else f"{k}={_fmt(v[0])}"
-                             for k, v in grid.items())
-            _say(f"  {label}: {n} combinations ({desc})")
+            # Defaults, arbitrary or assumed values first (they deserve attention), then values read
+            # from the problem.
+            noted = {text.split("=", 1)[0] for kind, text in notes if kind == "arbitrary"}
+            left = {k: v for k, v in defaults.get(label, ("", {}))[1].items() if k not in noted}
+            parts = [f"default {', '.join(f'{k}={_fmt(v)}' for k, v in left.items())}"] if left else []
+            parts += [f"{text} [{kind}]" for kind, text in notes if kind != "from_problem"]
+            known = [text.split(": ", 1)[-1] for kind, text in notes if kind == "from_problem"]
+            if known:
+                parts.append(", ".join(known) + " from the environment")
+            _say(f"  {label}: " + ("; ".join(parts) if parts else "as given"))
 
     # ---------------------------------------------------------------- output
     def _collect(self, steps: np.ndarray, outputs: dict, policies: Dict[str, Policy], search: dict,
@@ -456,6 +561,7 @@ class Experiment:
             "measure_memory": self.measure_memory,
             "policies": {label: {"class": type(p).__name__, "params": p.get_params()} for label, p in policies.items()},
             "parameter_notes": {label: [list(n) for n in notes] for label, notes in self._notes.items()},
+            "notices": self._notices_at_start,
             "param_search": ({label: {**info, "metric": self.search_metric, "search_runs": self.search_runs}
                               for label, info in search.items()} if search else None),
             "styles": styles,
@@ -512,8 +618,8 @@ def _say(message: str) -> None:
     print(message, file=sys.stderr, flush=True)
 
 
-#: Title of the banner printed when policies run with their default hyperparameters.
-DEFAULTS_WARNING = "WARNING: you are using default parameters"
+#: Title of the warning printed when a run starts (see :meth:`Experiment.notices`).
+WARNING_TITLE = "WARNING /!\\"
 _EXAMPLE_VALUES = {"alpha": 0.1, "lambda_": 0.01, "c": 0.0, "epsilon": 0.05, "tau": 0.1}
 
 
@@ -528,27 +634,43 @@ def _use_color(stream: Any) -> bool:
     return bool(getattr(stream, "isatty", lambda: False)()) and os.environ.get("TERM") != "dumb"
 
 
-def _banner(text: str, stream: Any = None) -> str:
-    """``text`` on a yellow band (or between two rules when colors are off)."""
+def _width() -> int:
     import shutil
 
-    width = max(len(text) + 2, min(shutil.get_terminal_size((80, 24)).columns, 100))
+    return max(60, min(shutil.get_terminal_size((100, 24)).columns, 100))
+
+
+def _banner(text: str, stream: Any = None) -> str:
+    """``text`` on a yellow band (or between two rules when colors are off)."""
+    width = max(len(text) + 2, _width())
     if _use_color(stream if stream is not None else sys.stderr):
         return f"\033[1;30;103m{(' ' + text).ljust(width)}\033[0m"
     return f"{'=' * width}\n {text}\n{'=' * width}"
 
 
-def _warn_defaults(defaults: Dict[str, Tuple[str, Dict[str, Any]]]) -> None:
-    """Banner and note when policies run with their default (paper) hyperparameters."""
-    cls, params = next(iter(defaults.values()))
-    key = next(iter(params))
-    example = f"{cls}({key}={_fmt(_EXAMPLE_VALUES.get(key, params[key]))})"
-    _say(_banner(DEFAULTS_WARNING))
-    _say("Defaults are the values of the papers (alpha=1: theoretical confidence bounds).\n"
-         "They are safe in theory but often explore too much in practice.\n"
-         "Note: if you want values fitted to your problem, run a grid search (param_grid=True, or\n"
-         "\"param_grid\": true in the \"experiment\" part of a config file), or set the parameters you want,\n"
-         f"e.g. {example}.")
+def _format_notices(notices: List[Dict[str, str]], stream: Any = None) -> str:
+    """The numbered warning: a band, then one aligned paragraph per point."""
+    import textwrap
+
+    width = _width()
+    color = _use_color(stream if stream is not None else sys.stderr)
+    n = len(notices)
+    lines = [_banner(f"{WARNING_TITLE}  {n} point{'s' if n > 1 else ''} to know about this run", stream)]
+    pad = len(f" {n}) ")
+    for i, notice in enumerate(notices, start=1):
+        head = f" {i}) ".rjust(pad)
+        title = f"\033[1m{notice['title']}.\033[0m" if color else f"{notice['title']}."
+        body = textwrap.fill(f"{notice['title']}. {notice['text']}", width=width, initial_indent=head,
+                             subsequent_indent=" " * pad)
+        lines.append(body.replace(f"{notice['title']}.", title, 1))
+    return "\n".join(lines)
+
+
+def _list(labels: List[str], limit: int = 6) -> str:
+    """'A, B and C' (at most ``limit`` names)."""
+    if len(labels) > limit:
+        return ", ".join(labels[:limit]) + f" and {len(labels) - limit} more"
+    return labels[0] if len(labels) == 1 else ", ".join(labels[:-1]) + " and " + labels[-1]
 
 
 def _fmt(value: Any) -> str:

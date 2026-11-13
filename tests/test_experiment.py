@@ -203,22 +203,31 @@ def test_parameter_notes():
     assert ("arbitrary" in dict(q.parameter_notes())) and any("epsilon" in t for _, t in q.parameter_notes())
 
 
-def test_default_parameters_warning(capsys, monkeypatch):
-    from banditkit.experiment import DEFAULTS_WARNING
+def test_launch_warning_adapts_to_the_settings(capsys, monkeypatch):
+    from banditkit.experiment import WARNING_TITLE
 
     env = bk.make_env(means=[0.2, 0.5, 0.7], noise_std=0.1)
     monkeypatch.setenv("NO_COLOR", "1")
-    bk.Experiment(env, [bk.UCB1(), bk.Random()], horizon=5, seed=0).run()
+    res = bk.Experiment(env, [bk.UCB1(), bk.Random()], horizon=5, seed=0, log_interval=2).run()
     err = capsys.readouterr().err
-    assert DEFAULTS_WARNING in err and "param_grid=True" in err and "UCB1: default alpha=1" in err
-    assert "\033[" not in err  # NO_COLOR: two rules instead of a colored band
-    bk.Experiment(env, [bk.UCB1(alpha=0.2), bk.Random()], horizon=5, seed=0).run()
-    assert DEFAULTS_WARNING not in capsys.readouterr().err  # nothing left at its default
-    bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0, param_grid={"alpha": [0.1, 1.0]}, search_runs=1).run()
-    assert DEFAULTS_WARNING not in capsys.readouterr().err  # values searched
+    assert WARNING_TITLE in err and "\033[" not in err  # NO_COLOR: two rules instead of a colored band
+    assert " 1) Default hyperparameters. UCB1 keeps" in err and "param_grid=True" in err
+    assert "Not stored" in err and 'track "pseudo_regret"' in err and "One run" in err and "log_interval=2" in err
+    assert "UCB1: default alpha=1" in err
+    keys = [n["key"] for n in res.meta["notices"]]  # kept with the results (the dashboard shows them)
+    assert keys == ["defaults", "assumed", "not_stored", "runs", "log_interval"]  # Gaussian rewards: b unknown
+    # Values set, pseudo-regret and actions stored, enough runs: only what is left.
+    bk.Experiment(env, [bk.UCB1(alpha=0.2), bk.Random()], horizon=5, n_runs=6, seed=0, track=["pseudo_regret", "actions", "estimates"],
+                  measure_memory=True).run()
+    err = capsys.readouterr().err
+    assert "Default hyperparameters" not in err and "Not stored" not in err and "Slower timings" in err
+    exp = bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0, param_grid={"alpha": [0.1, 1.0]}, search_runs=1)
+    assert [n["key"] for n in exp.notices()][0] == "search"
+    exp = bk.Experiment(env, [bk.UCB1(alpha=0.1)], horizon=5, n_runs=2, seed=0, n_jobs=2, timeout=1.0, train_freq=3)
+    assert {"runs", "n_jobs", "timeout", "train_freq"} <= {n["key"] for n in exp.notices()}
     monkeypatch.delenv("NO_COLOR")
     monkeypatch.setenv("FORCE_COLOR", "1")
     bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0).run()
-    assert "\033[1;30;103m WARNING" in capsys.readouterr().err
+    assert "\033[1;30;103m " + WARNING_TITLE in capsys.readouterr().err
     bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0, verbose=0).run()
     assert capsys.readouterr().err == ""
