@@ -181,9 +181,10 @@ const DEFAULT_UI = {
   finalKind: "box", tradeLogX: "auto", tradeLabels: false, searchLabel: "",
   export: { w: 6.4, h: 4, dpi: 300, font: 10, family: "sans", background: "white", title: false },
 };
-const ui = Object.assign({}, DEFAULT_UI, store.get("ui", {}));
+const savedUi = store.get("ui", {});
+if (savedUi.uiVersion !== DEFAULT_UI.uiVersion) Object.assign(savedUi, { markers: true, uiVersion: DEFAULT_UI.uiVersion });  // markers became the default
+const ui = Object.assign({}, DEFAULT_UI, savedUi);
 ui.export = Object.assign({}, DEFAULT_UI.export, ui.export || {});
-if (ui.uiVersion !== DEFAULT_UI.uiVersion) Object.assign(ui, { markers: true, uiVersion: DEFAULT_UI.uiVersion });  // markers on by default
 const perRun = store.get("runs", {});
 let current = null, revision = 0;
 const save = () => { store.set("ui", ui); store.set("runs", perRun); };
