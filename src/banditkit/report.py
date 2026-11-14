@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import time
 import math
 import warnings
 from pathlib import Path
@@ -256,6 +257,7 @@ def build_dashboard(folders: Optional[Sequence[Union[str, Path]]] = None, result
     data = json.dumps(summaries, separators=(",", ":")).replace("</", "<\\/")
     page = (Path(__file__).with_name("dashboard.html").read_text(encoding="utf-8")
             .replace("{{TITLE}}", title).replace("{{FONTS}}", _font_faces()).replace("{{PLOTLY}}", plotly_tag)
+            .replace("{{BUILT}}", time.strftime("%d %b %Y, %H:%M"))
             .replace("{{DATA}}", data))
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -263,30 +265,30 @@ def build_dashboard(folders: Optional[Sequence[Union[str, Path]]] = None, result
     return out
 
 
-#: Fonts embedded in the dashboard (SIL Open Font License, see banditkit/fonts): family, style, file, unicode range.
-#: Embedded rather than loaded from Google Fonts, so the page shows them offline and where outside fonts are blocked.
+#: Font embedded in the dashboard (Poppins, SIL Open Font License, see banditkit/fonts): style, weight, file.
+#: It is named "BanditKit Sans" so that it never clashes with a Poppins loaded from elsewhere: the page lists
+#: "BanditKit Sans", then Poppins from Google Fonts, then the system font.
+FONT_FAMILY = "BanditKit Sans"
+_FONTS = [("normal", w, f"poppins-latin-{w}-normal.woff2") for w in (400, 500, 600, 700)] + \
+         [("italic", 400, "poppins-latin-400-italic.woff2")]
 _LATIN = ("U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,"
           "U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD")
-_FONTS = [
-    ("Source Sans 3", "normal", "source-sans-3-latin-wght-normal.woff2", _LATIN),
-    ("Source Sans 3", "italic", "source-sans-3-latin-wght-italic.woff2", _LATIN),
-    ("Source Sans 3", "normal", "source-sans-3-latin-ext-wght-normal.woff2",
-     "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,"
-     "U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF"),
-]
 
 
 def _font_faces() -> str:
-    """The @font-face rules of the dashboard, with the font files inline (base64, about 160 kB)."""
+    """The @font-face rules of the dashboard, with the font files inline (base64, about 110 kB)."""
     import base64
 
     folder = Path(__file__).with_name("fonts")
     rules = []
-    for family, style, file, unicode_range in _FONTS:
+    for style, weight, file in _FONTS:
         b64 = base64.b64encode((folder / file).read_bytes()).decode("ascii")
-        rules.append(f'@font-face {{ font-family: "{family}"; font-style: {style}; font-weight: 100 900; font-display: block; '
-                     f'src: url(data:font/woff2;base64,{b64}) format("woff2"); unicode-range: {unicode_range}; }}')
-    return "<style>\n" + "\n".join(rules) + "\n</style>"
+        rules.append(f'@font-face {{ font-family: "{FONT_FAMILY}"; font-style: {style}; font-weight: {weight}; '
+                     f'font-display: block; src: url(data:font/woff2;base64,{b64}) format("woff2"); '
+                     f"unicode-range: {_LATIN}; }}")
+    google = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@'
+              '0,400;0,500;0,600;0,700;1,400&display=swap">')
+    return google + "\n<style>\n" + "\n".join(rules) + "\n</style>"
 
 
 #: plotly.js used by the dashboard when it is not embedded.

@@ -8,7 +8,7 @@
 <style>
 /* Sidebar on the left (results folders, then the policies: the legend of every chart), the page on the right:
    the setting as tags, the warning, key numbers in tiles, the controls, the charts. One look (data-look="navy"),
-   light and dark: navy and orange; Source Sans 3 for every text; controls after the Panda dashboard kit; glass sidebar and control bar
+   light and dark: navy and orange; Poppins for every text; Liquid Glass panels over a colored wallpaper; glass sidebar and control bar
    after Apple's Liquid Glass. */
 :root {
   --bg: #eef0f1; --surface: #ffffff; --surface-2: #f4f6f6; --ink: #1c2a2d; --ink-2: #4b5a5e; --ink-3: #737f82;
@@ -19,7 +19,7 @@
   --tile1: #23373b; --tile1-ink: #ffffff; --tile2: var(--surface); --tile2-ink: var(--ink); --icon-bg: #e7ecec; --icon-ink: #23373b;
   --warn: #7a4600; --warn-soft: #fff6e4; --warn-line: #e5a23e;
   --radius: 6px; --shadow: none; --card-border: 1px solid var(--line);
-  --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans: "BanditKit Sans", "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --title: "Source Serif 4", "Source Serif Pro", Georgia, "Times New Roman", serif; --title-weight: 600;
   --mono: "Source Code Pro", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
@@ -56,7 +56,7 @@
   --tile1: #1f3b63; --tile1-ink: #ffffff; --tile2: var(--surface); --tile2-ink: var(--ink); --icon-bg: #fdf1dc; --icon-ink: #b86e00;
   --warn: #7a4600; --warn-soft: #fff6e4; --warn-line: #f0b44c;
   --radius: 4px; --shadow: 0 2px 10px rgba(31, 59, 99, .08); --card-border: 0;
-  --sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 600; --fs: 15.5px;
+  --sans: "BanditKit Sans", "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 600; --fs: 14px;
   --mono: var(--sans);  /* one font for every text, hyperparameters included */
   color-scheme: light;
 }
@@ -735,7 +735,7 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 @media (max-width: 600px) { .ntable .nt-todo::before { content: "How to change: "; color: var(--warn); }
   .ntable .nt-default::before { content: "Default: "; color: var(--warn); } }
 
-/* Type: Source Sans 3 for every text (titles, figures, controls, tables, charts, hyperparameters). Its x-height is
+/* Type: one font for every text (titles, figures, controls, tables, charts, hyperparameters). Its x-height is
    low, so sizes are a step larger than usual. Titles at 600, figures at 700, tabular figures for numbers. */
 input, button, select, textarea { font-family: inherit; }
 :root[data-look="navy"] body { letter-spacing: 0; font-feature-settings: normal; }
@@ -830,6 +830,233 @@ input, button, select, textarea { font-family: inherit; }
 :root[data-width="normal"] main { justify-self: center; width: 100%; max-width: 1180px; box-sizing: border-box; }
 .chart.trade { height: 580px; }
 @media (max-width: 900px) { .chart.trade { height: 420px; } }
+
+/* ===================================================================== Liquid Glass (after Apple, 2025)
+   Glass needs something behind it: a colored wallpaper fills the window, and every panel is a translucent,
+   blurred, saturated pane with a bright rim, a soft shadow and large corners. Controls are capsules; on/off
+   settings are switches; the chart controls float in a glass toolbar at the bottom of the window. */
+:root[data-look="navy"] {
+  --lg-wall: radial-gradient(55% 45% at 6% 8%, rgba(255, 159, 64, .55), transparent 62%),
+             radial-gradient(50% 45% at 96% 4%, rgba(72, 128, 255, .55), transparent 60%),
+             radial-gradient(45% 45% at 90% 88%, rgba(255, 105, 160, .42), transparent 62%),
+             radial-gradient(55% 50% at 12% 96%, rgba(48, 196, 180, .40), transparent 62%),
+             linear-gradient(160deg, #f3efff 0%, #e8f0ff 48%, #fff1e6 100%);
+  --lg-fill: rgba(255, 255, 255, .50); --lg-fill-strong: rgba(255, 255, 255, .72); --lg-menu: rgba(255, 255, 255, .86);
+  --lg-line: rgba(255, 255, 255, .78); --lg-rim: rgba(255, 255, 255, .95);
+  --lg-shadow: 0 14px 40px rgba(34, 48, 92, .16), 0 2px 8px rgba(34, 48, 92, .08);
+  --lg-blur: blur(26px) saturate(185%);
+  --lg-side: linear-gradient(170deg, rgba(23, 45, 82, .72), rgba(12, 26, 50, .78));
+  --lg-track: rgba(118, 130, 160, .20); --lg-thumb: #ffffff; --lg-switch-on: #34c759;
+  --lg-warn: rgba(255, 213, 140, .42); --lg-warn-line: rgba(255, 180, 70, .65);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-look="navy"]:not([data-theme="light"]) {
+    --lg-wall: radial-gradient(55% 45% at 6% 8%, rgba(245, 150, 40, .32), transparent 62%),
+               radial-gradient(50% 45% at 96% 4%, rgba(60, 110, 240, .42), transparent 60%),
+               radial-gradient(45% 45% at 90% 88%, rgba(210, 70, 150, .30), transparent 62%),
+               radial-gradient(55% 50% at 12% 96%, rgba(30, 170, 160, .26), transparent 62%),
+               linear-gradient(160deg, #070c18 0%, #0a1430 50%, #150d26 100%);
+    --lg-fill: rgba(20, 28, 48, .46); --lg-fill-strong: rgba(20, 28, 48, .70); --lg-menu: rgba(22, 30, 52, .90);
+    --lg-line: rgba(255, 255, 255, .14); --lg-rim: rgba(255, 255, 255, .32);
+    --lg-shadow: 0 16px 44px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .3);
+    --lg-side: linear-gradient(170deg, rgba(10, 20, 40, .70), rgba(6, 12, 26, .80));
+    --lg-track: rgba(160, 175, 210, .18); --lg-thumb: rgba(255, 255, 255, .20);
+    --lg-warn: rgba(245, 165, 36, .14); --lg-warn-line: rgba(245, 165, 36, .45); }
+}
+:root[data-look="navy"][data-theme="dark"] {
+  --lg-wall: radial-gradient(55% 45% at 6% 8%, rgba(245, 150, 40, .32), transparent 62%),
+             radial-gradient(50% 45% at 96% 4%, rgba(60, 110, 240, .42), transparent 60%),
+             radial-gradient(45% 45% at 90% 88%, rgba(210, 70, 150, .30), transparent 62%),
+             radial-gradient(55% 50% at 12% 96%, rgba(30, 170, 160, .26), transparent 62%),
+             linear-gradient(160deg, #070c18 0%, #0a1430 50%, #150d26 100%);
+  --lg-fill: rgba(20, 28, 48, .46); --lg-fill-strong: rgba(20, 28, 48, .70); --lg-menu: rgba(22, 30, 52, .90);
+  --lg-line: rgba(255, 255, 255, .14); --lg-rim: rgba(255, 255, 255, .32);
+  --lg-shadow: 0 16px 44px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .3);
+  --lg-side: linear-gradient(170deg, rgba(10, 20, 40, .70), rgba(6, 12, 26, .80));
+  --lg-track: rgba(160, 175, 210, .18); --lg-thumb: rgba(255, 255, 255, .20);
+  --lg-warn: rgba(245, 165, 36, .14); --lg-warn-line: rgba(245, 165, 36, .45);
+}
+/* The wallpaper. */
+:root[data-look="navy"] body { background: var(--bg); }
+:root[data-look="navy"] body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--lg-wall); pointer-events: none; }
+/* Type: Poppins, round and geometric; big bold figures. */
+:root[data-look="navy"] body { font-size: 14px; }
+:root[data-look="navy"] .head h1 { font-size: 36px; font-weight: 700; letter-spacing: -.02em; }
+:root[data-look="navy"] .card h2 { font-size: 17px; font-weight: 600; color: var(--ink); }
+:root[data-look="navy"] .kpi .k-value { font-size: 28px; font-weight: 700; letter-spacing: -.015em; }
+:root[data-look="navy"] .spec b { font-size: 16px; font-weight: 600; }
+:root[data-look="navy"] .kpi .k-label, :root[data-look="navy"] .spec span { font-size: 12.5px; font-weight: 500; }
+:root[data-look="navy"] .pol .name, :root[data-look="navy"] .run .name { font-size: 14px; }
+:root[data-look="navy"] code, :root[data-look="navy"] .params { font-size: 13px; }
+/* Glass panes: cards, key numbers, setting tags. */
+:root[data-look="navy"] .panel, :root[data-look="navy"] .spec {
+  position: relative; background: var(--lg-fill); border: 1px solid var(--lg-line); border-radius: 26px;
+  box-shadow: var(--lg-shadow), inset 0 1px 0 var(--lg-rim); -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
+  transition: transform .35s cubic-bezier(.2, .9, .3, 1.2), box-shadow .35s; }
+:root[data-look="navy"] .card { background: var(--lg-fill-strong); }
+:root[data-look="navy"] .spec { border-radius: 18px; padding: 9px 15px; }
+:root[data-look="navy"] .kpi:hover, :root[data-look="navy"] .spec:hover { transform: translateY(-3px); }
+:root[data-look="navy"] .kpi:nth-child(1) { background: linear-gradient(140deg, rgba(36, 68, 118, .88), rgba(14, 28, 54, .82)); border-color: rgba(255, 255, 255, .28); }
+/* The warning: amber glass. */
+:root[data-look="navy"] .notices { background: var(--lg-warn); border: 1px solid var(--lg-warn-line); border-left-width: 1px; border-radius: 26px;
+  box-shadow: var(--lg-shadow), inset 0 1px 0 var(--lg-rim); -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur); }
+:root[data-look="navy"] .notices .ntable tr, :root[data-look="navy"] .notices .ntable td { background: none; }
+/* Sidebar: deep navy glass, the wallpaper glowing through. */
+:root[data-look="navy"] .side { background: var(--lg-side); border: 1px solid rgba(255, 255, 255, .16); border-radius: 30px;
+  box-shadow: 0 20px 50px rgba(10, 20, 45, .35), inset 0 1px 0 rgba(255, 255, 255, .22);
+  -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%); }
+:root[data-look="navy"] .side .btn.primary { border-radius: 999px; }
+.build { margin: auto 6px 0; padding-top: 10px; font-size: 11.5px; line-height: 1.4; color: var(--side-ink-2); }
+/* Capsule controls. */
+:root[data-look="navy"] main .seg { gap: 2px; padding: 3px; border-radius: 999px; background: var(--lg-track); }
+:root[data-look="navy"] main .seg button { height: 28px; padding: 0 13px; border-radius: 999px; color: var(--ink-2); font-size: 13px; }
+:root[data-look="navy"] main .seg button[aria-pressed="true"] { background: var(--lg-thumb); color: var(--ink); font-weight: 600;
+  box-shadow: 0 2px 6px rgba(20, 30, 60, .16), inset 0 1px 0 rgba(255, 255, 255, .9); }
+:root[data-look="navy"] main .tools .seg + .seg { margin-left: 6px; padding-left: 3px; border-left: 0; border-radius: 999px; }
+:root[data-look="navy"] main .menu > summary.btn, :root[data-look="navy"] main .card .btn,
+:root[data-look="navy"] .top-tools .btn, :root[data-look="navy"] .top-tools .chip {
+  height: 34px; padding: 0 15px; border: 1px solid var(--lg-line); border-radius: 999px; background: var(--lg-fill-strong); color: var(--ink);
+  font-size: 13px; font-weight: 600; box-shadow: 0 4px 14px rgba(34, 48, 92, .12), inset 0 1px 0 var(--lg-rim);
+  -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur); transition: transform .2s, background .2s; }
+:root[data-look="navy"] .top-tools .btn.icon { width: 34px; padding: 0; }
+:root[data-look="navy"] main .menu > summary.btn:hover, :root[data-look="navy"] main .card .btn:hover, :root[data-look="navy"] .top-tools .btn:hover,
+:root[data-look="navy"] .top-tools .chip:hover, :root[data-look="navy"] .top-tools details[open] > .chip, :root[data-look="navy"] main .menu[open] > summary.btn {
+  background: var(--lg-thumb); color: var(--ink); border-color: var(--lg-line); }
+:root[data-look="navy"] main .menu > summary.btn:active, :root[data-look="navy"] .top-tools .btn:active { transform: scale(.95); }
+/* On/off settings: switches. */
+:root[data-look="navy"] main .chip.toggle, :root[data-look="navy"] main .chip.toggle[aria-pressed="true"] { position: relative; gap: 10px; padding: 0 12px 0 54px;
+  border-radius: 999px; background: transparent; color: var(--ink); }
+:root[data-look="navy"] main .chip.toggle .ck, :root[data-look="navy"] main .chip.toggle:not([aria-pressed="true"]) .ck { display: none; }
+:root[data-look="navy"] main .chip.toggle::before, :root[data-look="navy"] main .chip.toggle[aria-pressed="true"]::before {
+  content: ""; display: block; position: absolute; left: 10px; top: 50%; width: 36px; height: 22px; margin-top: -11px; border-radius: 999px;
+  background: var(--lg-track); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); transition: background .25s; }
+:root[data-look="navy"] main .chip.toggle[aria-pressed="true"]::before { background: var(--lg-switch-on); }
+:root[data-look="navy"] main .chip.toggle::after { content: ""; position: absolute; left: 12px; top: 50%; width: 18px; height: 18px; margin-top: -9px;
+  border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0, 0, 0, .25); transition: transform .3s cubic-bezier(.3, 1.4, .5, 1); }
+:root[data-look="navy"] main .chip.toggle[aria-pressed="true"]::after { transform: translateX(14px); }
+/* Menus: frosted panels. */
+:root[data-look="navy"] .menu-list { border: 1px solid var(--lg-line); border-radius: 20px; background: var(--lg-menu);
+  box-shadow: 0 20px 50px rgba(20, 30, 70, .22), inset 0 1px 0 var(--lg-rim); -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur); }
+:root[data-look="navy"] .dd .seg.vlist button, :root[data-look="navy"] .menu-list > button { border-radius: 12px; }
+:root[data-look="navy"] main select, :root[data-look="navy"] main input[type="number"], :root[data-look="navy"] main input[type="text"] { border-radius: 12px; }
+/* The chart controls: a glass capsule floating at the bottom of the window. */
+:root[data-look="navy"] .floatbar { position: fixed; top: auto; bottom: 18px; left: calc(308px + (100vw - 308px) / 2); transform: translateX(-50%);
+  z-index: 40; width: max-content; max-width: calc(100vw - 308px - 40px); flex-wrap: nowrap; padding: 6px 8px; gap: 2px; border-radius: 999px;
+  background: var(--lg-fill-strong); border: 1px solid var(--lg-line);
+  box-shadow: 0 18px 48px rgba(20, 30, 70, .28), inset 0 1px 0 var(--lg-rim); -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur); }
+:root[data-look="navy"] .floatbar .chip { height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; }
+:root[data-look="navy"] .floatbar .chip:hover, :root[data-look="navy"] .floatbar details[open] > .chip { background: var(--lg-thumb); }
+:root[data-look="navy"] .floatbar .dd .menu-list { top: auto; bottom: calc(100% + 14px); transform-origin: 24px calc(100% + 14px); }
+:root[data-look="navy"] main { padding-bottom: 110px; }
+@media (max-width: 1100px) {
+  :root[data-look="navy"] .floatbar { left: calc(308px + 16px); right: 16px; transform: none; width: auto; max-width: none; flex-wrap: wrap; border-radius: 24px; }
+}
+@media (max-width: 900px) {
+  :root[data-look="navy"] .floatbar { position: fixed; left: 10px; right: 10px; bottom: 10px; transform: none; overflow-x: auto; flex-wrap: nowrap; border-radius: 22px; }
+  :root[data-look="navy"] main { padding-bottom: 100px; }
+}
+/* Less transparency, more contrast, solid surfaces: the panes become plain. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-look="navy"] .panel, :root[data-look="navy"] .spec, :root[data-look="navy"] .floatbar, :root[data-look="navy"] .menu-list, :root[data-look="navy"] .notices {
+    background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+:root[data-look="navy"][data-solid="true"] .panel, :root[data-look="navy"][data-solid="true"] .spec, :root[data-look="navy"][data-solid="true"] .floatbar,
+:root[data-look="navy"][data-solid="true"] .menu-list { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) { :root[data-look="navy"] .panel, :root[data-look="navy"] .spec, :root[data-look="navy"] main .chip.toggle::after { transition: none; } }
+
+/* ---------------------------------------------------------------- Liquid Glass, second pass: make it unmistakable */
+:root[data-look="navy"] {
+  --lg-wall: radial-gradient(38% 34% at 4% 6%, rgba(255, 140, 40, .78), transparent 70%),
+             radial-gradient(36% 34% at 98% 2%, rgba(50, 110, 255, .75), transparent 70%),
+             radial-gradient(32% 30% at 60% 46%, rgba(160, 90, 255, .42), transparent 72%),
+             radial-gradient(36% 34% at 94% 92%, rgba(255, 80, 150, .62), transparent 70%),
+             radial-gradient(40% 36% at 8% 96%, rgba(20, 200, 170, .60), transparent 70%),
+             radial-gradient(30% 28% at 36% 74%, rgba(255, 196, 60, .40), transparent 72%),
+             linear-gradient(150deg, #efe9ff 0%, #e2ecff 45%, #ffece0 100%);
+  --lg-fill: rgba(255, 255, 255, .42); --lg-fill-strong: rgba(255, 255, 255, .56);
+  --lg-gloss: linear-gradient(180deg, rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, .08) 38%, rgba(255, 255, 255, 0) 60%);
+  --lg-blur: blur(34px) saturate(200%);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-look="navy"]:not([data-theme="light"]) {
+    --lg-wall: radial-gradient(38% 34% at 4% 6%, rgba(255, 130, 30, .48), transparent 70%),
+               radial-gradient(36% 34% at 98% 2%, rgba(40, 100, 255, .58), transparent 70%),
+               radial-gradient(32% 30% at 60% 46%, rgba(140, 70, 255, .34), transparent 72%),
+               radial-gradient(36% 34% at 94% 92%, rgba(235, 60, 140, .44), transparent 70%),
+               radial-gradient(40% 36% at 8% 96%, rgba(10, 180, 150, .40), transparent 70%),
+               linear-gradient(150deg, #060a16 0%, #0a1230 50%, #170b26 100%);
+    --lg-fill: rgba(16, 24, 44, .42); --lg-fill-strong: rgba(16, 24, 44, .58);
+    --lg-gloss: linear-gradient(180deg, rgba(255, 255, 255, .14) 0%, rgba(255, 255, 255, .02) 38%, rgba(255, 255, 255, 0) 60%);
+    --lg-warn: rgba(245, 165, 36, .22); --lg-warn-line: rgba(245, 165, 36, .55); }
+}
+:root[data-look="navy"][data-theme="dark"] {
+  --lg-wall: radial-gradient(38% 34% at 4% 6%, rgba(255, 130, 30, .48), transparent 70%),
+             radial-gradient(36% 34% at 98% 2%, rgba(40, 100, 255, .58), transparent 70%),
+             radial-gradient(32% 30% at 60% 46%, rgba(140, 70, 255, .34), transparent 72%),
+             radial-gradient(36% 34% at 94% 92%, rgba(235, 60, 140, .44), transparent 70%),
+             radial-gradient(40% 36% at 8% 96%, rgba(10, 180, 150, .40), transparent 70%),
+             linear-gradient(150deg, #060a16 0%, #0a1230 50%, #170b26 100%);
+  --lg-fill: rgba(16, 24, 44, .42); --lg-fill-strong: rgba(16, 24, 44, .58);
+  --lg-gloss: linear-gradient(180deg, rgba(255, 255, 255, .14) 0%, rgba(255, 255, 255, .02) 38%, rgba(255, 255, 255, 0) 60%);
+  --lg-warn: rgba(245, 165, 36, .22); --lg-warn-line: rgba(245, 165, 36, .55);
+}
+/* Glossy panes: a bright top edge, a light inner border, the gloss fading downwards. */
+:root[data-look="navy"] .panel, :root[data-look="navy"] .spec, :root[data-look="navy"] .notices {
+  background-image: var(--lg-gloss); box-shadow: var(--lg-shadow), inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px rgba(255, 255, 255, .22); }
+:root[data-look="navy"] .card { background-color: var(--lg-fill-strong); }
+:root[data-look="navy"] .panel:not(.card):not(.kpi), :root[data-look="navy"] .spec { background-color: var(--lg-fill); }
+:root[data-look="navy"] .notices { background-color: var(--lg-warn); }
+/* Sidebar: frosted light glass in light mode, the folder you look at in a navy capsule. */
+:root[data-look="navy"]:not([data-theme="dark"]) .side {
+  --side-ink: #172338; --side-ink-2: #56657c; --side-2: rgba(31, 59, 99, .08); --side-line: rgba(31, 59, 99, .14);
+  background: rgba(255, 255, 255, .40) var(--lg-gloss); border: 1px solid rgba(255, 255, 255, .75); color: var(--side-ink);
+  box-shadow: 0 20px 50px rgba(30, 40, 90, .20), inset 0 1px 0 rgba(255, 255, 255, .95);
+  -webkit-backdrop-filter: blur(36px) saturate(210%); backdrop-filter: blur(36px) saturate(210%); }
+@media (prefers-color-scheme: dark) {
+  :root[data-look="navy"]:not([data-theme="light"]) .side {
+    --side-ink: #e6edf6; --side-ink-2: #9aaac0; --side-2: rgba(255, 255, 255, .08); --side-line: rgba(255, 255, 255, .12);
+    background: rgba(12, 18, 36, .46) var(--lg-gloss); border-color: rgba(255, 255, 255, .14); color: var(--side-ink); }
+}
+:root[data-look="navy"][data-theme="dark"] .side {
+  --side-ink: #e6edf6; --side-ink-2: #9aaac0; --side-2: rgba(255, 255, 255, .08); --side-line: rgba(255, 255, 255, .12);
+  background: rgba(12, 18, 36, .46) var(--lg-gloss); border-color: rgba(255, 255, 255, .14); color: var(--side-ink); }
+:root[data-look="navy"] .side .side-top { background: none; }
+:root[data-look="navy"] .brand { border-bottom-color: var(--side-line); }
+:root[data-look="navy"] .nav-pill { background: linear-gradient(180deg, #2c5590, #1f3b63); box-shadow: 0 8px 20px rgba(31, 59, 99, .35), inset 0 1px 0 rgba(255, 255, 255, .3); }
+:root[data-look="navy"] .run[aria-current="true"], :root[data-look="navy"] .run[aria-current="true"] * { color: #fff; }
+:root[data-look="navy"] .run:hover:not([aria-current="true"]), :root[data-look="navy"] .pol:hover { background: var(--side-2); }
+/* Key numbers: the figure first, big; the policy under it. */
+:root[data-look="navy"] .kpi { padding: 16px 18px 16px 20px; gap: 4px; }
+:root[data-look="navy"] .kpi .k-label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+:root[data-look="navy"] .kpi .k-big { font-size: 44px; font-weight: 700; line-height: 1.05; letter-spacing: -.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
+:root[data-look="navy"] .kpi .k-value { font-size: 15px; font-weight: 600; letter-spacing: 0; }
+:root[data-look="navy"] .kpi .k-sub { font-size: 12.5px; color: var(--ink-2); }
+:root[data-look="navy"] .kpi:nth-child(1) .k-label, :root[data-look="navy"] .kpi:nth-child(1) .k-big,
+:root[data-look="navy"] .kpi:nth-child(1) .k-value, :root[data-look="navy"] .kpi:nth-child(1) .k-sub { color: #fff; }
+:root[data-look="navy"] .kpi:nth-child(2) .k-big { color: #d9620f; }
+:root[data-look="navy"] .kpi:nth-child(3) .k-big { color: #0e8f6e; }
+@media (prefers-color-scheme: dark) { :root[data-look="navy"]:not([data-theme="light"]) .kpi:nth-child(2) .k-big { color: #ffa45c; }
+  :root[data-look="navy"]:not([data-theme="light"]) .kpi:nth-child(3) .k-big { color: #4fe0b0; } }
+:root[data-look="navy"][data-theme="dark"] .kpi:nth-child(2) .k-big { color: #ffa45c; }
+:root[data-look="navy"][data-theme="dark"] .kpi:nth-child(3) .k-big { color: #4fe0b0; }
+/* The learning curve and the final values side by side: each chart narrower. */
+.duo { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.duo > .card { min-width: 0; }
+.duo .chart.hero, .duo .chart.short { height: 440px; }
+@media (max-width: 1250px) { .duo { grid-template-columns: minmax(0, 1fr); } .duo .chart.short { height: 380px; } }
+:root[data-width="normal"] main { max-width: 1320px; }
+/* The floating bar: denser glass, and room for it under the last card. */
+:root[data-look="navy"] .floatbar { background: rgba(255, 255, 255, .95) var(--lg-gloss); -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%); }
+@media (prefers-color-scheme: dark) { :root[data-look="navy"]:not([data-theme="light"]) .floatbar { background: rgba(16, 24, 44, .95) var(--lg-gloss); } }
+:root[data-look="navy"][data-theme="dark"] .floatbar { background: rgba(16, 24, 44, .95) var(--lg-gloss); }
+:root[data-look="navy"] main { padding-bottom: 130px; }
+:root[data-look="navy"] .kpis { margin-bottom: 4px; }
+@media (max-width: 900px) {  /* on a phone the folders are a row of chips: the open one is a navy chip */
+  :root[data-look="navy"] .run[aria-current="true"] { background: linear-gradient(180deg, #2c5590, #1f3b63); border-radius: 14px; }
+}
+/* Style menu: the build date and the font really in use. */
+.style-box .build { margin: 2px 0 0; padding: 0 2px; font-size: 12px; color: var(--ink-2); }
+:root[data-look="navy"] .ntable .nt-default { color: var(--ink-2); }
 </style>
 {{PLOTLY}}
 </head>
@@ -879,7 +1106,7 @@ const TOKENS = {
   dark: { ink: "#e3ebec", ink2: "#a5b3b5", ink3: "#7c8b8e", grid: "#243235", axis: "#4d5f62", surface: "#172123" },
   print: { ink: "#14181d", ink2: "#3c444c", ink3: "#87909a", grid: "#e9ecf0", axis: "#8c959e", surface: "#ffffff" },
 };
-const PAGE_FONT = '"Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+const PAGE_FONT = '"BanditKit Sans", "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
 const CUMULATIVE = new Set(["regret", "pseudo_regret", "reward", "pareto_regret", "cpu_time", "wall_time"]);
 const SANS = "Helvetica, Arial, sans-serif", SERIF = "Times, 'Times New Roman', serif";
 
@@ -1518,6 +1745,16 @@ function select(i) {
   renderMain();
   enterMain();
 }
+// The Style menu says which font the browser really uses: the one inside the page, Poppins from Google, or the system font.
+let fontStatus = "Checking the font…";
+(document.fonts ? Promise.all([document.fonts.load('400 16px "BanditKit Sans"'), document.fonts.load("400 16px Poppins")]).catch(() => {})
+                       .then(() => document.fonts.ready) : Promise.resolve()).then(() => {
+  const el = document.getElementById("font-status"), faces = document.fonts ? [...document.fonts] : [];
+  const ok = fam => faces.some(f => f.family.replace(/"/g, "") === fam && f.status === "loaded");
+  fontStatus = ok("BanditKit Sans") ? "Font in use: Poppins (inside the page) ✓" : ok("Poppins") ? "Font in use: Poppins (Google) ✓"
+                                     : "Poppins did not load: the system font is shown ✗";
+  if (el) el.textContent = fontStatus;
+});
 // Key phrases of the warning are marked **like this**: bold capitals.
 const marked = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong class="em">$1</strong>');
 function seg(name, options, value, disabled) {
@@ -1589,6 +1826,7 @@ function renderMain() {
           <div class="row">${seg("theme", [["auto", "Auto", "Follows the browser"], ["light", "Light"], ["dark", "Dark"]], ui.theme)}
             ${seg("pageWidth", [["normal", "Normal width", "Page and charts at most 1,180 px wide"], ["full", "Full width", "Use the whole window"]], ui.pageWidth)}
             ${toggleChip("solid", "Solid surfaces", ui.solid)}</div>
+          <p class="build">Page built {{BUILT}}. <span id="font-status">${fontStatus}</span></p>
           <p class="dd-group">Charts</p>
           <div class="row">
             <label class="field"><span class="lab">Palette</span><select id="palette">${Object.entries(PALETTES).map(([k, v]) =>
@@ -1634,8 +1872,8 @@ function renderMain() {
       ${toggleChip("logX", "Log steps", ui.logX)}${toggleChip("logY", "Log values", ui.logY)}
 
     </section>
-    ${chartCard("curve", "Learning curve", "", "", "hero")}
-    <div class="grid2">
+    <div class="duo">
+      ${chartCard("curve", "Learning curve", "", "", "hero")}
       ${chartCard("final", "Final values", "", `${seg("finalKind", [["box", "Box"], ["violin", "Violin"], ["dots", "Mean ± band"]], ui.finalKind, v => !multi && v !== "dots")}`, "short")}
     </div>
     ${tradeViews(r).length ? chartCard("trade", "Trade-offs", "", `${tradeViews(r).length > 1 ? seg("tradeView", tradeViews(r), tradeView(r)) : ""}
@@ -1902,20 +2140,20 @@ function drawKpis() {
   if (ranked(r, m) && !ui.ref) {
     const hb = higher(r, m), rows = visible(r).map(q => ({ label: q.label, f: finalOf(r, m, q.label, "ci") }))
       .filter(x => x.f && x.f.mean !== null && isFinite(x.f.mean)).sort((a, b) => (hb ? -1 : 1) * (a.f.mean - b.f.mean));
-    if (rows[0]) tiles.push({ label: "Best policy", value: who(rows[0].label), sub: `${esc(what)} at T: <b>${val(rows[0].f.mean)}</b>`, icon: "trophy" });
+    if (rows[0]) tiles.push({ label: "Best policy", value: who(rows[0].label), big: val(rows[0].f.mean), sub: `${esc(what)} at T`, icon: "trophy" });
     if (rows[1]) {
       const a = rows[0].f.mean, b = rows[1].f.mean, gap = a ? Math.abs(b - a) / Math.abs(a) * 100 : null;
-      tiles.push({ label: "Runner-up", value: who(rows[1].label), icon: "flag",
-                   sub: `${val(b)}${gap !== null ? ` <b class="delta">${gap < 10 ? gap.toFixed(1) : Math.round(gap)}% ${hb ? "lower" : "higher"}</b>` : ""}` });
+      tiles.push({ label: "Runner-up", value: who(rows[1].label), big: val(b), icon: "flag",
+                   sub: gap !== null ? `<b class="delta">${gap < 10 ? gap.toFixed(1) : Math.round(gap)}% ${hb ? "lower" : "higher"}</b> than the best` : "" });
     }
   }
   const cpu = r.final.cpu_time, timed = cpu ? visible(r).filter(q => cpu[q.label] && isFinite(cpu[q.label].mean)) : [];
   if (timed.length) {
     const f = timed.reduce((a, b) => cpu[a.label].mean <= cpu[b.label].mean ? a : b);
-    tiles.push({ label: "Fastest", value: who(f.label), sub: `<b>${fmt(cpu[f.label].mean)} s</b> of CPU per run`, icon: "bolt" });
+    tiles.push({ label: "Fastest", value: who(f.label), big: `${fmt(cpu[f.label].mean)} s`, sub: "of CPU per run", icon: "bolt" });
   }
-  el.innerHTML = tiles.map(t => `<div class="panel kpi lit"><span class="k-label">${t.label}</span><span class="k-value">${t.value}</span>
-    <span class="k-sub">${t.sub}</span><span class="k-icon">${icon(t.icon)}</span></div>`).join("");
+  el.innerHTML = tiles.map(t => `<div class="panel kpi lit"><span class="k-label">${t.label}</span><span class="k-big">${t.big}</span>
+    <span class="k-value">${t.value}</span><span class="k-sub">${t.sub}</span><span class="k-icon">${icon(t.icon)}</span></div>`).join("");
   el.hidden = !tiles.length;
 }
 function rankedRows(r, m) {
