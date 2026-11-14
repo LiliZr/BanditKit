@@ -8,7 +8,7 @@
 <style>
 /* Sidebar on the left (results folders, then the policies: the legend of every chart), the page on the right:
    the setting as tags, the warning, key numbers in tiles, the controls, the charts. One look (data-look="navy"),
-   light and dark: navy and orange; Archivo; controls after the Panda dashboard kit; glass sidebar and control bar
+   light and dark: navy and orange; Source Sans 3 for every text; controls after the Panda dashboard kit; glass sidebar and control bar
    after Apple's Liquid Glass. */
 :root {
   --bg: #eef0f1; --surface: #ffffff; --surface-2: #f4f6f6; --ink: #1c2a2d; --ink-2: #4b5a5e; --ink-3: #737f82;
@@ -56,8 +56,8 @@
   --tile1: #1f3b63; --tile1-ink: #ffffff; --tile2: var(--surface); --tile2-ink: var(--ink); --icon-bg: #fdf1dc; --icon-ink: #b86e00;
   --warn: #7a4600; --warn-soft: #fff6e4; --warn-line: #f0b44c;
   --radius: 4px; --shadow: 0 2px 10px rgba(31, 59, 99, .08); --card-border: 0;
-  --sans: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 600; --fs: 14.5px;
-  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 600; --fs: 15.5px;
+  --mono: var(--sans);  /* one font for every text, hyperparameters included */
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -735,19 +735,21 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 @media (max-width: 600px) { .ntable .nt-todo::before { content: "How to change: "; color: var(--warn); }
   .ntable .nt-default::before { content: "Default: "; color: var(--warn); } }
 
-/* Type: Archivo, the grotesque of the Panda dashboard kit. Grey titles at 600, dark figures at 700, tabular figures for numbers. */
+/* Type: Source Sans 3 for every text (titles, figures, controls, tables, charts, hyperparameters). Its x-height is
+   low, so sizes are a step larger than usual. Titles at 600, figures at 700, tabular figures for numbers. */
+input, button, select, textarea { font-family: inherit; }
 :root[data-look="navy"] body { letter-spacing: 0; font-feature-settings: normal; }
-:root[data-look="navy"] .head h1 { font-size: 30px; font-weight: 700; letter-spacing: -.015em; line-height: 1.15; }
-:root[data-look="navy"] .card h2 { font-size: 17px; font-weight: 600; letter-spacing: 0; color: var(--ink-2); }
-:root[data-look="navy"] .kpi .k-value { font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
-:root[data-look="navy"] .kpi .k-label, :root[data-look="navy"] .spec span { font-weight: 500; letter-spacing: 0; }
-:root[data-look="navy"] .spec b { font-size: 15.5px; font-weight: 600; letter-spacing: 0; }
-:root[data-look="navy"] .brand-text { font-weight: 700; letter-spacing: -.01em; font-size: 20px; }
+:root[data-look="navy"] .head h1 { font-size: 34px; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
+:root[data-look="navy"] .card h2 { font-size: 19px; font-weight: 600; letter-spacing: 0; color: var(--ink-2); }
+:root[data-look="navy"] .kpi .k-value { font-size: 27px; font-weight: 700; letter-spacing: -.005em; }
+:root[data-look="navy"] .kpi .k-label, :root[data-look="navy"] .spec span { font-size: 14px; font-weight: 500; letter-spacing: 0; }
+:root[data-look="navy"] .spec b { font-size: 17px; font-weight: 600; letter-spacing: 0; }
+:root[data-look="navy"] .brand-text { font-weight: 700; letter-spacing: 0; font-size: 22px; }
 :root[data-look="navy"] .chip, :root[data-look="navy"] .btn, :root[data-look="navy"] .seg button { font-weight: 500; letter-spacing: 0; }
 :root[data-look="navy"] .chip b { font-weight: 600; }
-:root[data-look="navy"] .pol .name, :root[data-look="navy"] .run .name { font-weight: 500; letter-spacing: 0; }
+:root[data-look="navy"] .pol .name, :root[data-look="navy"] .run .name { font-weight: 500; letter-spacing: 0; font-size: 15px; }
 :root[data-look="navy"] .pol .val, :root[data-look="navy"] table, :root[data-look="navy"] .kpi .k-sub, :root[data-look="navy"] .spec b { font-variant-numeric: tabular-nums; }
-:root[data-look="navy"] code, :root[data-look="navy"] .params { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0; }
+:root[data-look="navy"] code, :root[data-look="navy"] .params { font-family: var(--sans); font-size: 14px; letter-spacing: 0; }
 
 /* Controls after the Panda kit, in navy: text tabs with a tinted active tab, "Label: value v" dropdowns, square
    checkboxes, tinted secondary buttons, white outlined buttons in the top bar, tinted table headers, 6 px corners. */
@@ -769,12 +771,12 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 /* Text tabs (views, scales, chart kinds): grey text, the active tab tinted. */
 :root[data-look="navy"] main .seg { gap: 2px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 :root[data-look="navy"] main .seg button { height: 28px; padding: 0 10px; border-radius: var(--ctl-r); background: none; color: var(--ctl-soft);
-  font-size: 13.5px; font-weight: 500; box-shadow: none; transition: background .15s, color .15s; }
+  font-size: 14.5px; font-weight: 500; box-shadow: none; transition: background .15s, color .15s; }
 :root[data-look="navy"] main .seg button:hover:not(:disabled) { color: var(--ctl); }
 :root[data-look="navy"] main .seg button[aria-pressed="true"] { background: var(--ctl-tint); color: var(--ctl); font-weight: 600; box-shadow: none; }
 :root[data-look="navy"] main .tools .seg + .seg { margin-left: 4px; padding-left: 6px; border-left: 1px solid var(--ctl-line); border-radius: 0; }
 /* Dropdowns of the floating bar: "Metric: Regret v", tinted while open. */
-:root[data-look="navy"] .floatbar .chip { height: 34px; padding: 0 11px; border-radius: var(--ctl-r); background: transparent; box-shadow: none; }
+:root[data-look="navy"] .floatbar .chip { height: 34px; padding: 0 11px; border-radius: var(--ctl-r); font-size: 14.5px; background: transparent; box-shadow: none; }
 :root[data-look="navy"] .floatbar .chip:hover { background: var(--ctl-tint); }
 :root[data-look="navy"] .floatbar details[open] > .chip { background: var(--ctl-tint); box-shadow: none; }
 :root[data-look="navy"] main .dd .chip .chip-k { color: var(--ink-2); font-weight: 500; }
@@ -800,13 +802,13 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 /* Buttons of the cards (Download): tinted, with their icon. */
 :root[data-look="navy"] main .menu > summary.btn, :root[data-look="navy"] main .card .btn {
   height: 30px; padding: 0 12px; gap: 6px; border: 0; border-radius: var(--ctl-r); background: var(--ctl-tint); color: var(--ctl);
-  font-size: 13px; font-weight: 600; box-shadow: none; filter: none; }
+  font-size: 14px; font-weight: 600; box-shadow: none; filter: none; }
 :root[data-look="navy"] main .menu > summary.btn:hover, :root[data-look="navy"] main .menu[open] > summary.btn,
 :root[data-look="navy"] main .card .btn:hover { background: var(--ctl-tint-2); color: var(--ctl); filter: none; }
 /* Top bar: white outlined buttons with a soft shadow, as in the button kit; the open Style menu tinted. */
 :root[data-look="navy"] .top-tools .btn, :root[data-look="navy"] .top-tools .chip {
   height: 36px; padding: 0 13px; border: 1px solid var(--ctl-line); border-radius: var(--ctl-r); background: var(--surface); color: var(--ink);
-  font-size: 13.5px; font-weight: 500; box-shadow: var(--ctl-shadow); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  font-size: 14.5px; font-weight: 500; box-shadow: var(--ctl-shadow); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-look="navy"] .top-tools .btn.icon { width: 36px; padding: 0; justify-content: center; }
 :root[data-look="navy"] .top-tools .btn:hover, :root[data-look="navy"] .top-tools .chip:hover,
 :root[data-look="navy"] .top-tools details[open] > .chip { background: var(--ctl-tint); border-color: var(--ctl-line); color: var(--ctl); box-shadow: var(--ctl-shadow); }
@@ -877,7 +879,7 @@ const TOKENS = {
   dark: { ink: "#e3ebec", ink2: "#a5b3b5", ink3: "#7c8b8e", grid: "#243235", axis: "#4d5f62", surface: "#172123" },
   print: { ink: "#14181d", ink2: "#3c444c", ink3: "#87909a", grid: "#e9ecf0", axis: "#8c959e", surface: "#ffffff" },
 };
-const PAGE_FONT = '"Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+const PAGE_FONT = '"Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
 const CUMULATIVE = new Set(["regret", "pseudo_regret", "reward", "pareto_regret", "cpu_time", "wall_time"]);
 const SANS = "Helvetica, Arial, sans-serif", SERIF = "Times, 'Times New Roman', serif";
 

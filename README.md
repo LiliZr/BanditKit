@@ -63,7 +63,7 @@ folders of [`results/`](results):
   arm buckets, user clusters, Pareto front.
 
 Charts load plotly.js from the internet; `python -m banditkit dashboard --offline` embeds it too.
-The fonts (Archivo and JetBrains Mono, SIL Open Font License) are always inside the page.
+The font (Source Sans 3, SIL Open Font License) is always inside the page.
 
 Each folder of `results/` is the output of the configuration of [`configs/`](configs) with
 the same name. The problems are synthetic, drawn from fixed seeds:
