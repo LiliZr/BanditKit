@@ -45,6 +45,9 @@ def test_dashboard_embeds_every_folder(tmp_path):
     data = json.loads(page.split('<script id="bk-data" type="application/json">')[1].split("</script>")[0])
     assert [s["name"] for s in data] == ["a-run", "b-run"]
     assert "cdn.jsdelivr.net/npm/plotly.js-dist-min" in page
+    # The fonts travel inside the page: nothing to fetch, so they also show offline and in sandboxed viewers.
+    assert page.count("@font-face") == 4 and 'font-family: "Archivo"' in page and "{{FONTS}}" not in page
+    assert "fonts.googleapis.com" not in page
     only = report.build_dashboard([tmp_path / "results" / "b-run"], out=tmp_path / "one.html").read_text()
     assert '"name":"b-run"' in only and '"name":"a-run"' not in only
 

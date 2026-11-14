@@ -255,11 +255,39 @@ def build_dashboard(folders: Optional[Sequence[Union[str, Path]]] = None, result
         plotly_tag = f'<script src="{PLOTLY_CDN}"></script>'
     data = json.dumps(summaries, separators=(",", ":")).replace("</", "<\\/")
     page = (Path(__file__).with_name("dashboard.html").read_text(encoding="utf-8")
-            .replace("{{TITLE}}", title).replace("{{PLOTLY}}", plotly_tag).replace("{{DATA}}", data))
+            .replace("{{TITLE}}", title).replace("{{FONTS}}", _font_faces()).replace("{{PLOTLY}}", plotly_tag)
+            .replace("{{DATA}}", data))
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
     return out
+
+
+#: Fonts embedded in the dashboard (SIL Open Font License, see banditkit/fonts): family, style, file, unicode range.
+#: Embedded rather than loaded from Google Fonts, so the page shows them offline and where outside fonts are blocked.
+_LATIN = ("U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,"
+          "U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD")
+_FONTS = [
+    ("Archivo", "normal", "archivo-latin-wght-normal.woff2", _LATIN),
+    ("Archivo", "italic", "archivo-latin-wght-italic.woff2", _LATIN),
+    ("Archivo", "normal", "archivo-latin-ext-wght-normal.woff2",
+     "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,"
+     "U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF"),
+    ("JetBrains Mono", "normal", "jetbrains-mono-latin-wght-normal.woff2", _LATIN),
+]
+
+
+def _font_faces() -> str:
+    """The @font-face rules of the dashboard, with the font files inline (base64, about 200 kB)."""
+    import base64
+
+    folder = Path(__file__).with_name("fonts")
+    rules = []
+    for family, style, file, unicode_range in _FONTS:
+        b64 = base64.b64encode((folder / file).read_bytes()).decode("ascii")
+        rules.append(f'@font-face {{ font-family: "{family}"; font-style: {style}; font-weight: 100 900; font-display: block; '
+                     f'src: url(data:font/woff2;base64,{b64}) format("woff2"); unicode-range: {unicode_range}; }}')
+    return "<style>\n" + "\n".join(rules) + "\n</style>"
 
 
 #: plotly.js used by the dashboard when it is not embedded.

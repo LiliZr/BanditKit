@@ -24,7 +24,7 @@ cd BanditKit
 open dashboard.html           # macOS (Linux: xdg-open dashboard.html, Windows: start dashboard.html)
 ```
 
-It loads plotly.js and its fonts from the internet. After installing (below),
+It loads plotly.js from the internet; its fonts are inside the page. After installing (below),
 `python -m banditkit dashboard --open` rebuilds it from `results/` and opens it.
 
 ## Install
@@ -62,8 +62,8 @@ folders of [`results/`](results):
   Thompson Sampling, allocation of the pulls, regret per arm, confidence ellipsoid of LinUCB,
   arm buckets, user clusters, Pareto front.
 
-Charts load plotly.js and the fonts from the internet; `python -m banditkit dashboard --offline` embeds
-plotly.js (the page then uses the fonts of the system).
+Charts load plotly.js from the internet; `python -m banditkit dashboard --offline` embeds it too.
+The fonts (Archivo and JetBrains Mono, SIL Open Font License) are always inside the page.
 
 Each folder of `results/` is the output of the configuration of [`configs/`](configs) with
 the same name. The problems are synthetic, drawn from fixed seeds:

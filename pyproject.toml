@@ -26,7 +26,7 @@ banditkit = "banditkit.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-banditkit = ["dashboard.html"]
+banditkit = ["dashboard.html", "fonts/*.woff2", "fonts/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
