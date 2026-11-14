@@ -272,7 +272,8 @@ class Experiment:
         configs = [_RunConfig(spec, self.horizon, self.weights, steps, self.timeout, self.train_freq, self.track,
                               self.measure_memory) for spec in self.specs]
         n_workers = (os.cpu_count() or 1) if self.n_jobs == -1 else self.n_jobs
-        self._notices_at_start = self.notices()
+        self._notices_at_start = self.notices()  # printed now, in the present
+        self._notices_after = self.notices(past=True)  # stored with the results, read after the run
         if self.verbose:
             self._say_plan()
 
@@ -403,29 +404,37 @@ class Experiment:
                 (per_action if np.ndim(v) > 0 else scalar).append(k)
         return sorted(set(scalar)), sorted(set(per_action))
 
-    def notices(self) -> List[Dict[str, str]]:
+    def notices(self, past: bool = False) -> List[Dict[str, str]]:
         """What to know before reading the results of this run, one dict per item.
 
         Each item has ``key``, ``title``, ``text`` (what happens, in short sentences), ``default`` (the
-        default setting) and ``todo`` (how to change it; empty when there is nothing to change). Printed as
-        a numbered warning when the run starts (``verbose >= 1``) and stored in ``results.meta["notices"]``
-        (the dashboard shows them as a table).
+        default setting) and ``todo`` (how to change it). The warning printed when a run starts uses the
+        present tense; ``past=True`` words it for a finished run, as stored in ``results.meta["notices"]``
+        and shown by the dashboard. Key phrases are marked ``**like this**``: the terminal and the dashboard
+        show them in bold capitals.
         """
         out: List[Dict[str, str]] = []
 
         def add(key: str, title: str, text: str, default: str = "", todo: str = "") -> None:
             out.append({"key": key, "title": title, "text": text, "default": default, "todo": todo})
 
+        def t(now: str, then: str) -> str:  # the verb of the run: present before it, past after it
+            return then if past else now
+
         def they(labels: List[str]) -> str:
             return "it" if len(labels) == 1 else "they"
 
         grids = self._grids or {}
+        searched = [label for label, g in grids.items() if g]
         defaults = {}
         for label, (cls, params) in self._defaults_in_use().items():
             arbitrary = {text.split("=", 1)[0] for kind, text in self._notes.get(label, []) if kind == "arbitrary"}
             kept = {k: v for k, v in params.items() if k not in arbitrary}  # arbitrary values are listed below
-            if kept and not grids.get(label):
+            if kept and label not in searched:
                 defaults[label] = (cls, kept)
+        # Policies whose values you chose: one tunable hyperparameter set away from its default, no grid search.
+        chosen = [label for label, p in self.policies.items() if label not in searched and any(
+            p.get_params()[k] != spec.default for k, spec in p._all_params().items() if k in p.default_search_params)]
         if defaults:
             cls, params = next(iter(defaults.values()))
             key = next(iter(params))
@@ -433,29 +442,41 @@ class Experiment:
             groups: Dict[str, List[str]] = {}  # same values, one group: "alpha=1 for UCB1 and KL-UCB"
             for label, (_, p) in defaults.items():
                 groups.setdefault(" ".join(f"{k}={_fmt(v)}" for k, v in p.items()), []).append(label)
-            if len(defaults) == len(self.policies) and len(groups) == 1:
-                used = f"All policies use the values from their papers: {next(iter(groups))}."
+            others = [label for label in self.policies if label not in defaults]
+            use = t("use", "used")
+            if len(groups) == 1 and not others:
+                used = f"All policies {use} the **values from their papers**: {next(iter(groups))}."
+            elif len(groups) == 1 and len(defaults) >= 2 and set(others) <= set(chosen) | set(searched):
+                used = (f"All policies except {_list(others)} {use} the **values from their papers**: "
+                        f"{next(iter(groups))}.")
             elif len(groups) == 1:
                 (v, labels), = groups.items()
-                used = (f"{_list(labels)} {_verb(labels, 'uses', 'use')} the values from "
-                        f"{_verb(labels, 'its paper', 'their papers')}: {v}.")
+                used = (f"{_list(labels)} {_verb(labels, t('uses', 'used'), use)} the **values from "
+                        f"{_verb(labels, 'its paper', 'their papers')}**: {v}.")
             else:
-                used = ("Some policies use the values from their papers: "
+                used = (f"{'Some' if others else 'All'} policies {use} the **values from their papers**: "
                         + "; ".join(f"{v} for {_list(labels)}" for v, labels in groups.items()) + ".")
+            mine = [label for label in chosen if label not in defaults]
+            partly = [label for label in chosen if label in defaults]
+            if mine:
+                used += f" You chose the values of {_list(mine)}."
+            if partly:
+                used += f" You chose some values of {_list(partly)}."
+            if searched:
+                used += f" The values of {_list(searched)} {t('come', 'came')} from the grid search."
             add("defaults", "Default hyperparameters",
-                f"{used} These values are safe in theory. In practice, they often explore too much. "
+                f"{used} These values are safe in theory. In practice, they often **explore too much**. "
                 "The regret can then be higher than with tuned values.",
                 "The values from the papers (param_grid=None).",
                 f"Search the best values with param_grid=True. Or set them yourself, e.g. {example}.")
-        searched = {label: g for label, g in grids.items() if g}
         if searched:
-            n = sum(int(np.prod([len(v) for v in g.values()])) for g in searched.values())
+            n = sum(int(np.prod([len(v) for v in grids[label].values()])) for label in searched)
             runs = f"{self.search_runs} run" + ("s" if self.search_runs > 1 else "")
             add("search", "Grid search",
-                f"The hyperparameters of {_list(list(searched))} come from a grid search on this problem. "
-                f"The search tried {n} combinations, {runs} each, on other seeds than the results. "
-                f"Each policy keeps the combination with the best final {self.search_metric}. "
-                "These values fit this problem only.",
+                f"The hyperparameters of {_list(searched)} come from a grid search on this problem. "
+                f"The search {t('tries', 'tried')} {n} combinations, {runs} each, on other seeds than the results. "
+                f"Each policy {t('keeps', 'kept')} the combination with the best final {self.search_metric}. "
+                "These values **fit this problem only**.",
                 "No search: the values from the papers (param_grid=None).",
                 'Set your own grid, e.g. param_grid={"alpha": [0.1, 1]}. '
                 "Set the runs per combination with search_runs (default 3).")
@@ -471,8 +492,8 @@ class Experiment:
             values = "; ".join(f"{text.split(': ')[-1]} ({text.split(':')[0]}) for {_list(labels)}"
                                for text, labels in assumed.items())
             add("assumed", "Assumed constants",
-                "The problem does not give some constants of the confidence bounds. "
-                f"The policies assume them: {values}.",
+                "Some constants of the confidence bounds are **not given by the problem**. "
+                f"The policies {t('assume', 'assumed')} them: {values}.",
                 "1 when the problem does not give them.",
                 f"Give the true values, e.g. {example}.")
 
@@ -482,17 +503,18 @@ class Experiment:
                   else "UCB or estimated mean")
             it = they(bucketed)
             add("buckets", "Arm buckets (heuristic)",
-                f"{_list(bucketed)} {_verb(bucketed, 'ranks', 'rank')} the actions by {by} and "
-                f"{_verb(bucketed, 'groups', 'group')} them into buckets. "
-                f"At each step, {it} {_verb(bucketed, 'searches', 'search')} one bucket only. "
-                f"This is faster, but {it} can miss the best action. The regret bound no longer holds.",
+                f"{_list(bucketed)} {_verb(bucketed, t('ranks', 'ranked'), t('rank', 'ranked'))} the actions by {by} "
+                f"and {_verb(bucketed, t('groups', 'grouped'), t('group', 'grouped'))} them into buckets. "
+                f"At each step, {it} {_verb(bucketed, t('searches', 'searched'), t('search', 'searched'))} "
+                f"one bucket only. This is faster, but {it} can **miss the best action**. "
+                "The regret bound **no longer holds**.",
                 "No buckets: every action is searched (n_buckets=None).",
                 "Set n_buckets=None to search every action. Set bucket_by_ucb=False to rank by estimated mean.")
         kmeans = [label for label, p in self.policies.items() if p.get_params().get("user_model") == "kmeans"]
         if kmeans:
             add("kmeans", "K-means users (heuristic)",
-                f"{_list(kmeans)} {_verb(kmeans, 'pulls', 'pull')} each user model towards the center of its "
-                "k-means cluster. This is a heuristic: there is no regret guarantee.",
+                f"{_list(kmeans)} {_verb(kmeans, t('pulls', 'pulled'), t('pull', 'pulled'))} each user model "
+                "towards the center of its k-means cluster. This is a heuristic: there is **no regret guarantee**.",
                 'One model for all users (user_model="shared").',
                 'Set user_model="individual" for one model per user.')
         missing, names = [], []
@@ -522,51 +544,54 @@ class Experiment:
             how = ([f"Store them with track=[{', '.join(names)}]."] if names else []) + \
                   ([] if self.measure_memory else ["Measure memory with measure_memory=True (slower)."])
             add("not_stored", "Not stored",
-                f"This run does not store {listed}. The charts cannot show them.",
+                f"This run {t('does **not store**', '**did not store**')} {listed}. The charts cannot show them.",
                 "Regret, reward, CPU time and wall time only (track=(), measure_memory=False).",
                 " ".join(how))
 
         total = self.n_runs * self.n_instances
         if total == 1:
-            add("runs", "One run", "Each policy runs once. So there is no confidence interval.",
+            add("runs", "One run", f"Each policy {t('runs', 'ran')} once. So there is **no confidence interval**.",
                 "One run per policy (n_runs=1).", "Increase n_runs, e.g. n_runs=10. Or use several instances.")
         elif total < 5:
-            add("runs", "Few runs", f"Each policy runs only {total} times. So the confidence intervals are wide.",
+            add("runs", "Few runs",
+                f"Each policy {t('runs', 'ran')} only {total} times. So the confidence intervals are **wide**.",
                 "One run per policy (n_runs=1).", "Increase n_runs, e.g. n_runs=10.")
         if self.log_interval > 1:
             k = self.log_interval
             why = (f" You set log_interval={k}." if self._log_interval_given
                    else f" This is the default here: T // 5000 = {self.horizon} // 5000 = {k}.")
             add("log_interval", f"Curves stored every {k} steps",
-                f"The curves keep one value every {k} steps. Between two kept steps, the line is drawn, "
-                f"not measured.{why}",
+                f"The curves {t('keep', 'kept')} one value every {k} steps. Between two kept steps, the line is "
+                f"**drawn, not measured**.{why}",
                 "One value every T // 5000 steps (log_interval=None).",
                 "Set log_interval=1 to keep every step. The files get larger.")
         if self.timeout is not None:
             add("timeout", "Timeout",
-                f"Each run stops after {_fmt(self.timeout)} s of policy CPU time. After that, its curves are empty.",
+                f"Each run {t('stops', 'stopped')} after {_fmt(self.timeout)} s of policy CPU time. "
+                f"After that, its curves {t('are', 'were')} **empty**.",
                 "No limit (timeout=None).", "Raise timeout, or set timeout=None.")
         if self.measure_memory:
             add("memory", "Slower timings",
-                "Peak memory is measured (measure_memory=True). This makes Python code about 5 times slower. "
-                "So the CPU times are higher than in a normal run.",
+                f"Peak memory {t('is', 'was')} measured (measure_memory=True). This {t('makes', 'made')} Python "
+                "code about **5 times slower**. So the CPU times are higher than in a normal run.",
                 "Memory is not measured (measure_memory=False).",
                 "Set measure_memory=False for normal CPU times. "
                 "Compare CPU times only between runs with the same setting.")
         if self.n_jobs != 1:
             add("n_jobs", "Parallel runs",
-                f"The runs are parallel (n_jobs={self.n_jobs}), with one BLAS thread each. "
-                "So the CPU times can differ from runs one at a time.",
+                f"The runs {t('are parallel', 'ran in parallel')} (n_jobs={self.n_jobs}), with one BLAS thread each. "
+                "So the CPU times **can differ** from runs one at a time.",
                 "One run at a time (n_jobs=1).",
                 "Set n_jobs=1. Compare CPU times only between runs with the same n_jobs.")
         if self.train_freq > 1:
             add("train_freq", "Batched updates",
-                f"The policies learn every {self.train_freq} steps, from the observations of these steps. "
-                "Between two updates, they do not learn.",
+                f"The policies {t('learn', 'learned')} every {self.train_freq} steps, from the observations of "
+                f"these steps. Between two updates, they **{t('do not learn', 'did not learn')}**.",
                 "The policies learn at every step (train_freq=1).", "Set train_freq=1.")
         if self.checkpoint_dir is not None:
             add("checkpoint", "Checkpoints",
-                f"Finished runs are saved in {self.checkpoint_dir}. A new launch loads them instead of running them again.",
+                f"Finished runs {t('are', 'were')} saved in {self.checkpoint_dir}. A new launch **loads them** "
+                "instead of running them again.",
                 "Nothing is saved during the run (checkpoint_dir=None).",
                 "Empty this folder after you change the code or the settings.")
         return out
@@ -633,7 +658,7 @@ class Experiment:
             "measure_memory": self.measure_memory,
             "policies": {label: {"class": type(p).__name__, "params": p.get_params()} for label, p in policies.items()},
             "parameter_notes": {label: [list(n) for n in notes] for label, notes in self._notes.items()},
-            "notices": self._notices_at_start,
+            "notices": self._notices_after,
             "param_search": ({label: {**info, "metric": self.search_metric, "search_runs": self.search_runs}
                               for label, info in search.items()} if search else None),
             "styles": styles,
@@ -721,26 +746,80 @@ def _banner(text: str, stream: Any = None) -> str:
 
 
 def _format_notices(notices: List[Dict[str, str]], stream: Any = None) -> str:
-    """The numbered warning: a band, then for each item what to know, the default and how to change it."""
-    import textwrap
+    """The numbered warning, laid out like the dashboard table.
 
+    One block per item: its number and title, then three aligned rows (What to know, Default, How to change).
+    Key phrases (``**...**``) are in capitals, and in bold yellow when the terminal has colors.
+    """
     width = _width()
     color = _use_color(stream if stream is not None else sys.stderr)
-    n = len(notices)
+
+    def paint(code: str, text: str) -> str:
+        return f"\033[{code}m{text}\033[0m" if color and code and text else text
+
+    num = len(str(len(notices)))
+    indent = 1 + num + 2                      # " 1  " then the rows
+    label_w = len("How to change") + 2
+    body_w = max(30, width - indent - label_w)
+    rows = (("What to know", "text", ""), ("Default", "default", "2"), ("How to change", "todo", "32"))
     lines = [_banner(WARNING_TITLE, stream)]
-    pad = len(f" {n}) ")
     for i, notice in enumerate(notices, start=1):
-        head = f" {i}) ".rjust(pad)
-        title = f"\033[1m{notice['title']}.\033[0m" if color else f"{notice['title']}."
-        body = textwrap.fill(f"{notice['title']}. {notice['text']}", width=width, initial_indent=head,
-                             subsequent_indent=" " * pad)
-        lines.append(body.replace(f"{notice['title']}.", title, 1))
-        for label, field in (("Default", "default"), ("How to change", "todo")):
-            if notice.get(field):
-                line = textwrap.fill(f"{label}: {notice[field]}", width=width, initial_indent=" " * pad,
-                                     subsequent_indent=" " * pad)
-                lines.append(f"\033[2m{line}\033[0m" if color else line)
+        if i > 1:
+            lines.append(paint("2", " " + ("─" if color else "-") * (width - 2)))
+        lines.append(" " + paint("1;33", str(i).rjust(num)) + "  " + paint("1", notice["title"]))
+        for label, field, tone in rows:
+            if not notice.get(field):
+                continue
+            for j, words in enumerate(_wrap_marked(notice[field], body_w)):
+                head = label.ljust(label_w) if j == 0 else " " * label_w
+                lines.append(" " * indent + paint("36", head) + _paint_words(words, tone, paint))
+    lines.append(paint("33", ("━" if color else "=") * width))  # the end of the warning
     return "\n".join(lines)
+
+
+def _paint_words(words: List[List[Tuple[str, bool]]], tone: str, paint: Callable[[str, str], str]) -> str:
+    """One line of words: key phrases in bold yellow capitals, the rest in ``tone``; one color code per run."""
+    segs: List[List[Any]] = []
+    for k, word in enumerate(words):
+        if k:
+            segs.append([" ", None])  # a space takes the style around it when both sides share it
+        segs.extend([piece.upper() if strong else piece, "1;33" if strong else tone] for piece, strong in word)
+    merged: List[List[Any]] = []
+    for i, (text, style) in enumerate(segs):
+        if style is None:
+            style = segs[i - 1][1] if segs[i - 1][1] == segs[i + 1][1] else ""
+        if merged and merged[-1][1] == style:
+            merged[-1][0] += text
+        else:
+            merged.append([text, style])
+    return "".join(paint(style, text) for text, style in merged)
+
+
+def _wrap_marked(text: str, width: int) -> List[List[List[Tuple[str, bool]]]]:
+    """Words of ``text`` in lines of at most ``width`` characters, ``**marks**`` removed.
+
+    Each word is a list of (piece, strong) pairs, so that a marked phrase can start or end inside a word
+    ("**slower**." is one word: "slower" strong, then "." plain).
+    """
+    words: List[List[Tuple[str, bool]]] = []
+    for k, part in enumerate(text.split("**")):
+        strong = k % 2 == 1
+        for n, chunk in enumerate(part.split(" ")):
+            if n > 0 or not words or part.startswith(" "):
+                words.append([])
+            if chunk:
+                words[-1].append((chunk, strong))
+    words = [w for w in words if w]
+    lines: List[List[List[Tuple[str, bool]]]] = [[]]
+    used = 0
+    for word in words:
+        size = sum(len(piece) for piece, _ in word)
+        if lines[-1] and used + 1 + size > width:
+            lines.append([])
+            used = 0
+        used += size + (1 if lines[-1] else 0)
+        lines[-1].append(word)
+    return lines
 
 
 def _verb(items: List[str], one: str, several: str) -> str:

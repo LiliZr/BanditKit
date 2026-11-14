@@ -211,10 +211,17 @@ def test_launch_warning_adapts_to_the_settings(capsys, monkeypatch):
     res = bk.Experiment(env, [bk.UCB1(), bk.Random()], horizon=5, seed=0, log_interval=2).run()
     err = capsys.readouterr().err
     assert WARNING_TITLE in err and "\033[" not in err  # NO_COLOR: two rules instead of a colored band
-    assert " 1) Default hyperparameters. UCB1 uses the values from its paper: alpha=1." in err
-    assert "Default: The values from the papers (param_grid=None)." in err
-    assert "How to change: Search the best values with param_grid=True." in err
+    # Aligned rows; key phrases in capitals; the present tense, since the run is starting.
+    assert " 1  Default hyperparameters\n    What to know   UCB1 uses the VALUES FROM ITS PAPER: alpha=1." in err
+    assert "    Default        The values from the papers (param_grid=None)." in err
+    assert "    How to change  Search the best values with param_grid=True." in err
+    assert "This run does NOT STORE the pseudo-regret" in err and "Each policy runs once." in err
     assert all(n["default"] and n["todo"] for n in res.meta["notices"])  # what is the default, how to change it
+    # Stored with the results, for the dashboard: the past tense, key phrases marked.
+    texts = {n["key"]: n["text"] for n in res.meta["notices"]}
+    assert texts["defaults"].startswith("UCB1 used the **values from its paper**: alpha=1.")
+    assert texts["not_stored"].startswith("This run **did not store** the pseudo-regret")
+    assert texts["runs"] == "Each policy ran once. So there is **no confidence interval**."
     assert "Not stored" in err and 'track=["pseudo_regret"' in err and "One run" in err and "log_interval=2" in err
     assert all(n["text"][0].isupper() for n in res.meta["notices"])  # each item starts with a capital letter
     assert "UCB1: default alpha=1" in err
@@ -235,3 +242,14 @@ def test_launch_warning_adapts_to_the_settings(capsys, monkeypatch):
     assert "\033[1;30;103m " + WARNING_TITLE in capsys.readouterr().err
     bk.Experiment(env, [bk.UCB1()], horizon=5, seed=0, verbose=0).run()
     assert capsys.readouterr().err == ""
+
+
+def test_warning_names_the_policies_whose_values_you_chose():
+    env = bk.make_env(means=[0.2, 0.5, 0.7], noise_std=0.1)
+    exp = bk.Experiment(env, {"UCB1 0.2": bk.UCB1(alpha=0.2), "UCB1": bk.UCB1(), "UCB-V": bk.UCBV()}, horizon=5)
+    text = next(n["text"] for n in exp.notices() if n["key"] == "defaults")
+    assert text.startswith("All policies except UCB1 0.2 use the **values from their papers**: alpha=1. "
+                           "You chose the values of UCB1 0.2.")
+    # Values chosen for every policy: nothing to warn about.
+    exp = bk.Experiment(env, [bk.UCB1(alpha=0.2), bk.UCBV(alpha=0.5)], horizon=5)
+    assert "defaults" not in [n["key"] for n in exp.notices()]

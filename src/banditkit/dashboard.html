@@ -395,6 +395,7 @@ tr.off td { opacity: .45; }
 .ntable .nt-todo { min-width: 220px; }
 .ntable .nt-default { min-width: 170px; color: var(--ink-2); }
 .ntable .nt-text { min-width: 280px; }
+.ntable .em { font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--warn); }
 .notices .table-wrap { padding: 0 8px 6px; }
 /* Key numbers: three tiles. */
 .kpis { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -822,6 +823,9 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 /* Sidebar button: the same corners as the rest. */
 :root[data-look="navy"] .side .btn.primary { border-radius: var(--ctl-r); }
 
+/* Page width: at most 1,180 px by default, centered beside the sidebar, so the charts keep a readable shape on
+   wide screens. Style > Full width uses the whole window. */
+:root[data-width="normal"] main { justify-self: center; width: 100%; max-width: 1180px; box-sizing: border-box; }
 .chart.trade { height: 580px; }
 @media (max-width: 900px) { .chart.trade { height: 420px; } }
 </style>
@@ -885,7 +889,7 @@ const store = {
 const DEFAULT_UI = {
   metric: "regret", view: "cumulative", band: "ci", logX: false, logY: false, outliers: "crop", factor: 4, ref: "",
   palette: "banditkit", lines: "technique", markers: true, width: 2, font: 13, legend: "top", theme: "auto", look: "navy", uiVersion: 4,
-  finalKind: "box", tradeLogX: "auto", tradeLabels: false, tradeView: "", searchLabel: "", solid: false,
+  finalKind: "box", tradeLogX: "auto", tradeLabels: false, tradeView: "", searchLabel: "", solid: false, pageWidth: "normal",
   export: { w: 6.4, h: 4, dpi: 300, font: 10, family: "sans", background: "white", title: false },
 };
 const savedUi = store.get("ui", {});
@@ -969,6 +973,7 @@ function applyTheme() {
   const root = document.documentElement;
   root.dataset.look = "navy";
   root.dataset.solid = ui.solid ? "true" : "false";
+  root.dataset.width = ui.pageWidth === "full" ? "full" : "normal";
   if (ui.theme === "auto") delete root.dataset.theme;
   else root.dataset.theme = ui.theme;
 }
@@ -1511,6 +1516,8 @@ function select(i) {
   renderMain();
   enterMain();
 }
+// Key phrases of the warning are marked **like this**: bold capitals.
+const marked = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong class="em">$1</strong>');
 function seg(name, options, value, disabled) {
   return `<div class="seg" role="group" aria-label="${esc(name)}" data-key="${name}">${options.map(([v, t, tip]) =>
     `<button data-v="${esc(v)}" aria-pressed="${String(v) === String(value)}" ${disabled && disabled(v) ? "disabled" : ""}
@@ -1578,6 +1585,7 @@ function renderMain() {
         <div class="menu-list style-box">
           <p class="dd-group">Display</p>
           <div class="row">${seg("theme", [["auto", "Auto", "Follows the browser"], ["light", "Light"], ["dark", "Dark"]], ui.theme)}
+            ${seg("pageWidth", [["normal", "Normal width", "Page and charts at most 1,180 px wide"], ["full", "Full width", "Use the whole window"]], ui.pageWidth)}
             ${toggleChip("solid", "Solid surfaces", ui.solid)}</div>
           <p class="dd-group">Charts</p>
           <div class="row">
@@ -1611,7 +1619,7 @@ function renderMain() {
     ${notices.length ? `<details class="notices" id="notices" ${rs(r).noticesOpen === false ? "" : "open"}><summary>${icon("warn")}<span class="warn-word">WARNING</span>${icon("warn")}
       <span class="nt-tags">${notices.map(n => `<span class="badge">${esc(n.title)}</span>`).join("")}</span>${icon("chev", "chev")}</summary>
       <div class="table-wrap"><table class="ntable"><thead><tr><th class="num">#</th><th>Topic</th><th>What to know</th>${hasDefault ? "<th>Default</th>" : ""}<th>How to change</th></tr></thead><tbody>
-      ${notices.map((n, i) => `<tr><td class="num">${i + 1}</td><td class="nt-title">${esc(n.title)}</td><td class="nt-text">${esc(n.text)}</td>${hasDefault ? `<td class="nt-default">${n.default ? esc(n.default) : "–"}</td>` : ""}<td class="nt-todo">${n.todo ? esc(n.todo) : "–"}</td></tr>`).join("")}
+      ${notices.map((n, i) => `<tr><td class="num">${i + 1}</td><td class="nt-title">${esc(n.title)}</td><td class="nt-text">${marked(n.text)}</td>${hasDefault ? `<td class="nt-default">${n.default ? marked(n.default) : "–"}</td>` : ""}<td class="nt-todo">${n.todo ? marked(n.todo) : "–"}</td></tr>`).join("")}
       </tbody></table></div></details>` : ""}
     <section class="kpis" id="kpis" aria-label="Key numbers"></section>
     ${missing.length ? `<p class="missing">Not stored in this folder: ${esc(missing.join("; "))}.</p>` : ""}
@@ -1666,7 +1674,7 @@ function bindMain() {
     if (menu) { menu.querySelector("summary b").textContent = b.textContent.trim(); menu.open = false; menu.querySelector("summary").focus(); }
     if (key === "metric") { if (!cumulative(ui.metric)) ui.view = "cumulative"; save(); renderMain();
                             const back = document.querySelector('details.dd[data-for="metric"] > summary'); if (back) back.focus(); return; }
-    if (key === "look" || key === "theme") { relook(); const box = document.querySelector('details.dd[data-for="style"]'); if (box) box.open = true; return; }
+    if (key === "look" || key === "theme" || key === "pageWidth") { relook(); const box = document.querySelector('details.dd[data-for="style"]'); if (box) box.open = true; return; }
     save(); drawAll(); refreshCharts();
   }));
   main.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
