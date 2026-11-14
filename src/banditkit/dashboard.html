@@ -6,12 +6,12 @@
 <title>{{TITLE}}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..800;1,14..32,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400..700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 /* Sidebar on the left (results folders, then the policies: the legend of every chart), the page on the right:
-   key numbers in tiles, the warning, the controls, the charts. Four looks (data-look), each in light and dark:
-   Metropolis (Beamer theme colors; Source fonts of Streamlit and W&B), Navy (navy and orange; Nunito of SB Admin 2),
-   Midnight (dark, gradient tiles; Roboto) and Material (Creative Tim Material Dashboard; Inter). */
+   the setting as tags, the warning, key numbers in tiles, the controls, the charts. One look (data-look="navy"),
+   light and dark: navy and orange; Archivo; controls after the Panda dashboard kit; glass sidebar and control bar
+   after Apple's Liquid Glass. */
 :root {
   --bg: #eef0f1; --surface: #ffffff; --surface-2: #f4f6f6; --ink: #1c2a2d; --ink-2: #4b5a5e; --ink-3: #737f82;
   --line: #d5dbdc; --line-2: #e6eaeb; --hover: #e7ecec; --grid: #e6eaeb; --axis: #a2adb0;
@@ -58,7 +58,7 @@
   --tile1: #1f3b63; --tile1-ink: #ffffff; --tile2: var(--surface); --tile2-ink: var(--ink); --icon-bg: #fdf1dc; --icon-ink: #b86e00;
   --warn: #7a4600; --warn-soft: #fff6e4; --warn-line: #f0b44c;
   --radius: 4px; --shadow: 0 2px 10px rgba(31, 59, 99, .08); --card-border: 0;
-  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 700; --fs: 14.5px;
+  --sans: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; --title: var(--sans); --title-weight: 600; --fs: 14.5px;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
 }
@@ -388,13 +388,15 @@ tr.off td { opacity: .45; }
 .spec span { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
 .spec b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 :root[data-look="navy"] .spec { border-color: transparent; box-shadow: var(--shadow); border-left: 3px solid var(--primary); }
-/* Warning: one row per caveat. */
+/* Warning: one row per item (what to know, default, how to change). */
 .ntable { margin: 0 0 4px; font-size: .95em; }
 .ntable th, .ntable td { padding: 7px 12px; border-bottom: 1px solid var(--warn-line); vertical-align: top; background: none; }
 .ntable th { color: var(--warn); font-size: 12px; text-transform: none; letter-spacing: 0; opacity: .85; }
 .ntable tr:last-child td { border-bottom: 0; }
 .ntable .nt-title { font-weight: 700; color: var(--warn); white-space: nowrap; }
 .ntable .nt-todo { min-width: 220px; }
+.ntable .nt-default { min-width: 170px; color: var(--ink-2); }
+.ntable .nt-text { min-width: 280px; }
 .notices .table-wrap { padding: 0 8px 6px; }
 /* Key numbers: three tiles. */
 .kpis { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -448,6 +450,8 @@ details[open] > .chip .chev { transform: rotate(180deg); }
   .floatbar .dd.wide { margin-left: 0; }
   .dd.right .menu-list, .dd .menu-list { left: 0; right: auto; }
   .ntable .nt-todo { min-width: 160px; }
+  .ntable .nt-default { min-width: 130px; }
+  .ntable .nt-text { min-width: 220px; }
 }
 .nav-pill { display: none; }
 
@@ -667,7 +671,7 @@ details[open] > .chip .chev { transform: rotate(180deg); }
 /* Toggles read as toggles when off: an empty ring, replaced by the check when on. */
 :root[data-look="navy"] .chip.toggle::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ink-2); }
 :root[data-look="navy"] .chip.toggle[aria-pressed="true"]::before { display: none; }
-/* Warning: closed, its caveats stay visible as tags in the title line. */
+/* Warning: closed, its items stay visible as tags in the title line. */
 .nt-tags { display: flex; flex-wrap: wrap; gap: 4px; font-weight: 600; }
 .nt-tags .badge { margin: 0; background: rgba(255, 255, 255, .6); }
 .notices[open] .nt-tags { display: none; }
@@ -714,9 +718,10 @@ details[open] > .chip .chev { transform: rotate(180deg); }
   .ntable tr { display: grid; grid-template-columns: 22px 1fr; column-gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--warn-line); }
   .ntable tr:last-child { border-bottom: 0; }
   .ntable td { border: 0; padding: 2px 0; }
-  .ntable td.num { grid-row: span 3; }
+  .ntable td.num { grid-row: span 4; }
   .ntable .nt-title { white-space: normal; }
-  .ntable .nt-todo { min-width: 0; font-weight: 600; }
+  .ntable .nt-todo, .ntable .nt-default, .ntable .nt-text { min-width: 0; }
+  .ntable .nt-todo { font-weight: 600; }
   .floatbar, :root[data-look="navy"] .floatbar { position: static; }
 }
 
@@ -728,22 +733,96 @@ details[open] > .chip .chev { transform: rotate(180deg); }
   :root[data-look="navy"] { --ink-3: var(--ink-2); }
 }
 :root[data-look="navy"] .chip.toggle:not([aria-pressed="true"]) .ck { margin-left: -5px; }
-@media (max-width: 600px) { .ntable .nt-todo::before { content: "What to do: "; color: var(--warn); } }
+@media (max-width: 600px) { .ntable .nt-todo::before { content: "How to change: "; color: var(--warn); }
+  .ntable .nt-default::before { content: "Default: "; color: var(--warn); } }
 
-/* Type: Inter with optical sizes (display cuts on titles), tight tracking on large text as in Apple's type,
-   l and I told apart from 1 (policy names, hyperparameters), tabular figures for numbers. */
-:root[data-look="navy"] body { font-optical-sizing: auto; font-feature-settings: "cv05", "cv08"; letter-spacing: -.003em; }
-:root[data-look="navy"] .head h1 { font-size: 32px; font-weight: 750; letter-spacing: -.028em; line-height: 1.12; }
-:root[data-look="navy"] .card h2 { font-size: 17px; font-weight: 650; letter-spacing: -.012em; }
-:root[data-look="navy"] .kpi .k-value { font-size: 23px; font-weight: 700; letter-spacing: -.02em; }
+/* Type: Archivo, the grotesque of the Panda dashboard kit. Grey titles at 600, dark figures at 700, tabular figures for numbers. */
+:root[data-look="navy"] body { letter-spacing: 0; font-feature-settings: normal; }
+:root[data-look="navy"] .head h1 { font-size: 30px; font-weight: 700; letter-spacing: -.015em; line-height: 1.15; }
+:root[data-look="navy"] .card h2 { font-size: 17px; font-weight: 600; letter-spacing: 0; color: var(--ink-2); }
+:root[data-look="navy"] .kpi .k-value { font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
 :root[data-look="navy"] .kpi .k-label, :root[data-look="navy"] .spec span { font-weight: 500; letter-spacing: 0; }
-:root[data-look="navy"] .spec b { font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; }
-:root[data-look="navy"] .brand-text { font-weight: 750; letter-spacing: -.02em; font-size: 20px; }
-:root[data-look="navy"] .chip, :root[data-look="navy"] .btn, :root[data-look="navy"] .seg button { font-weight: 550; letter-spacing: -.005em; }
-:root[data-look="navy"] .chip b { font-weight: 650; }
-:root[data-look="navy"] .pol .name, :root[data-look="navy"] .run .name { font-weight: 600; letter-spacing: -.008em; }
+:root[data-look="navy"] .spec b { font-size: 15.5px; font-weight: 600; letter-spacing: 0; }
+:root[data-look="navy"] .brand-text { font-weight: 700; letter-spacing: -.01em; font-size: 20px; }
+:root[data-look="navy"] .chip, :root[data-look="navy"] .btn, :root[data-look="navy"] .seg button { font-weight: 500; letter-spacing: 0; }
+:root[data-look="navy"] .chip b { font-weight: 600; }
+:root[data-look="navy"] .pol .name, :root[data-look="navy"] .run .name { font-weight: 500; letter-spacing: 0; }
 :root[data-look="navy"] .pol .val, :root[data-look="navy"] table, :root[data-look="navy"] .kpi .k-sub, :root[data-look="navy"] .spec b { font-variant-numeric: tabular-nums; }
 :root[data-look="navy"] code, :root[data-look="navy"] .params { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0; }
+
+/* Controls after the Panda kit, in navy: text tabs with a tinted active tab, "Label: value v" dropdowns, square
+   checkboxes, tinted secondary buttons, white outlined buttons in the top bar, tinted table headers, 6 px corners. */
+:root[data-look="navy"] {
+  --ctl: #1f3b63; --ctl-soft: #6f7d93; --ctl-tint: #eaf0f8; --ctl-tint-2: #dce6f3; --ctl-line: #d3dcea; --ctl-box: #98a9c1;
+  --ctl-solid: #1f3b63; --ctl-on-solid: #ffffff; --ctl-r: 6px; --ctl-shadow: 0 1px 2px rgba(16, 24, 40, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-look="navy"]:not([data-theme="light"]) {
+    --ctl: #c3d4ee; --ctl-soft: #8b9ab1; --ctl-tint: rgba(160, 190, 235, .12); --ctl-tint-2: rgba(160, 190, 235, .2);
+    --ctl-line: rgba(160, 190, 235, .22); --ctl-box: rgba(195, 212, 238, .5); --ctl-solid: #c3d4ee; --ctl-on-solid: #0a1322;
+    --ctl-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
+}
+:root[data-look="navy"][data-theme="dark"] {
+  --ctl: #c3d4ee; --ctl-soft: #8b9ab1; --ctl-tint: rgba(160, 190, 235, .12); --ctl-tint-2: rgba(160, 190, 235, .2);
+  --ctl-line: rgba(160, 190, 235, .22); --ctl-box: rgba(195, 212, 238, .5); --ctl-solid: #c3d4ee; --ctl-on-solid: #0a1322;
+  --ctl-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+/* Text tabs (views, scales, chart kinds): grey text, the active tab tinted. */
+:root[data-look="navy"] main .seg { gap: 2px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+:root[data-look="navy"] main .seg button { height: 28px; padding: 0 10px; border-radius: var(--ctl-r); background: none; color: var(--ctl-soft);
+  font-size: 13.5px; font-weight: 500; box-shadow: none; transition: background .15s, color .15s; }
+:root[data-look="navy"] main .seg button:hover:not(:disabled) { color: var(--ctl); }
+:root[data-look="navy"] main .seg button[aria-pressed="true"] { background: var(--ctl-tint); color: var(--ctl); font-weight: 600; box-shadow: none; }
+:root[data-look="navy"] main .tools .seg + .seg { margin-left: 4px; padding-left: 6px; border-left: 1px solid var(--ctl-line); border-radius: 0; }
+/* Dropdowns of the floating bar: "Metric: Regret v", tinted while open. */
+:root[data-look="navy"] .floatbar .chip { height: 34px; padding: 0 11px; border-radius: var(--ctl-r); background: transparent; box-shadow: none; }
+:root[data-look="navy"] .floatbar .chip:hover { background: var(--ctl-tint); }
+:root[data-look="navy"] .floatbar details[open] > .chip { background: var(--ctl-tint); box-shadow: none; }
+:root[data-look="navy"] main .dd .chip .chip-k { color: var(--ink-2); font-weight: 500; }
+:root[data-look="navy"] main .dd .chip .chip-k::after { content: ":"; }
+:root[data-look="navy"] main .dd .chip b { color: var(--ctl); font-weight: 600; }
+:root[data-look="navy"] main .dd .chip .chev { color: var(--ctl-soft); }
+/* On/off settings as square checkboxes: an outlined box, filled navy with a white check when on. */
+:root[data-look="navy"] main .chip.toggle, :root[data-look="navy"] main .chip.toggle[aria-pressed="true"] {
+  gap: 8px; padding: 0 10px; border: 0; background: transparent; color: var(--ink); box-shadow: none; }
+:root[data-look="navy"] main .chip.toggle:hover { background: var(--ctl-tint); }
+:root[data-look="navy"] main .chip.toggle::before, :root[data-look="navy"] main .chip.toggle[aria-pressed="true"]::before { display: none; }
+:root[data-look="navy"] main .chip.toggle .ck, :root[data-look="navy"] main .chip.toggle:not([aria-pressed="true"]) .ck {
+  display: block; flex: none; width: 18px; height: 18px; margin: 0; padding: 2px; opacity: 1; border-radius: 4px;
+  box-shadow: inset 0 0 0 1.5px var(--ctl-box); background: var(--surface); color: transparent; stroke-width: 3;
+  stroke-dasharray: none; stroke-dashoffset: 0; transition: background .15s, box-shadow .15s; }
+:root[data-look="navy"] main .chip.toggle[aria-pressed="true"] .ck { background: var(--ctl-solid); box-shadow: none; color: var(--ctl-on-solid); }
+/* Menus: white panels, 6 px items, the chosen one tinted. */
+:root[data-look="navy"] .menu-list { border: 1px solid var(--ctl-line); border-radius: 10px; padding: 6px; background: var(--menu-solid);
+  box-shadow: 0 12px 32px rgba(16, 24, 40, .14); }
+:root[data-look="navy"] .dd .seg.vlist button, :root[data-look="navy"] .menu-list > button { border-radius: var(--ctl-r); color: var(--ink); font-weight: 500; }
+:root[data-look="navy"] .dd .seg.vlist button:hover, :root[data-look="navy"] .menu-list > button:hover { background: var(--ctl-tint); color: var(--ink); }
+:root[data-look="navy"] .dd .seg.vlist button[aria-pressed="true"] { background: var(--ctl-tint); color: var(--ctl); font-weight: 600; }
+/* Buttons of the cards (Download): tinted, with their icon. */
+:root[data-look="navy"] main .menu > summary.btn, :root[data-look="navy"] main .card .btn {
+  height: 30px; padding: 0 12px; gap: 6px; border: 0; border-radius: var(--ctl-r); background: var(--ctl-tint); color: var(--ctl);
+  font-size: 13px; font-weight: 600; box-shadow: none; filter: none; }
+:root[data-look="navy"] main .menu > summary.btn:hover, :root[data-look="navy"] main .menu[open] > summary.btn,
+:root[data-look="navy"] main .card .btn:hover { background: var(--ctl-tint-2); color: var(--ctl); filter: none; }
+/* Top bar: white outlined buttons with a soft shadow, as in the button kit; the open Style menu tinted. */
+:root[data-look="navy"] .top-tools .btn, :root[data-look="navy"] .top-tools .chip {
+  height: 36px; padding: 0 13px; border: 1px solid var(--ctl-line); border-radius: var(--ctl-r); background: var(--surface); color: var(--ink);
+  font-size: 13.5px; font-weight: 500; box-shadow: var(--ctl-shadow); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-look="navy"] .top-tools .btn.icon { width: 36px; padding: 0; justify-content: center; }
+:root[data-look="navy"] .top-tools .btn:hover, :root[data-look="navy"] .top-tools .chip:hover,
+:root[data-look="navy"] .top-tools details[open] > .chip { background: var(--ctl-tint); border-color: var(--ctl-line); color: var(--ctl); box-shadow: var(--ctl-shadow); }
+:root[data-look="navy"] .top-tools .glass::before, :root[data-look="navy"] .top-tools .glass::after { display: none; }
+:root[data-look="navy"] .top-tools .menu-list .btn { height: 32px; box-shadow: none; }
+/* Fields: tinted, no border until focused. */
+:root[data-look="navy"] main select, :root[data-look="navy"] main input[type="number"], :root[data-look="navy"] main input[type="text"] {
+  border: 1px solid transparent; border-radius: var(--ctl-r); background-color: var(--ctl-tint); color: var(--ink); }
+:root[data-look="navy"] main select:hover, :root[data-look="navy"] main input[type="number"]:hover, :root[data-look="navy"] main input[type="text"]:hover { border-color: var(--ctl-line); }
+:root[data-look="navy"] main select:focus-visible, :root[data-look="navy"] main input:focus-visible { border-color: var(--ctl); outline: none; }
+/* Tables of the cards: a tinted header band. */
+:root[data-look="navy"] main .card table:not(.ntable) thead th { background: var(--ctl-tint); color: var(--ink); font-weight: 600;
+  border-top: 1px solid var(--ctl-line); border-bottom: 1px solid var(--ctl-line); }
+/* Sidebar button: the same corners as the rest. */
+:root[data-look="navy"] .side .btn.primary { border-radius: var(--ctl-r); }
 
 .chart.trade { height: 580px; }
 @media (max-width: 900px) { .chart.trade { height: 420px; } }
@@ -796,7 +875,7 @@ const TOKENS = {
   dark: { ink: "#e3ebec", ink2: "#a5b3b5", ink3: "#7c8b8e", grid: "#243235", axis: "#4d5f62", surface: "#172123" },
   print: { ink: "#14181d", ink2: "#3c444c", ink3: "#87909a", grid: "#e9ecf0", axis: "#8c959e", surface: "#ffffff" },
 };
-const PAGE_FONT = '"Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+const PAGE_FONT = '"Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
 const CUMULATIVE = new Set(["regret", "pseudo_regret", "reward", "pareto_regret", "cpu_time", "wall_time"]);
 const SANS = "Helvetica, Arial, sans-serif", SERIF = "Times, 'Times New Roman', serif";
 
@@ -1488,6 +1567,7 @@ function renderMain() {
   const metrics = Object.keys(r.curves), groups = {};
   for (const m of metrics) (groups[group(r, m)] = groups[group(r, m)] || []).push(m);
   const notices = r.notices || [], missing = notices.some(n => n.key === "not_stored") ? [] : missingHint(r);
+  const hasDefault = notices.some(n => n.default);  // results saved before BanditKit stored the defaults have none
   const multi = totalRuns(r) > 1, hasSd = metrics.some(m => Object.values(r.curves[m])[0].sd);
   const metricOptions = ["performance", "multi-objective", "cost", "policy state"].filter(g => groups[g])
     .flatMap(g => [{ group: cap(g) }, ...groups[g].map(m => [m, cap(title(r, m).replace(/^Cumulative /, ""))])]);
@@ -1530,10 +1610,10 @@ function renderMain() {
     <header class="head"><h1 title="${esc(r.folder || r.name)}">${esc(prettyName(r.name))}</h1>
       ${r.description ? `<p class="desc" title="${esc(r.description)}">${esc(r.description.split(/(?<=\.)\s+/)[0])}</p>` : ""}
       <ul class="specs">${specs.map(([k, v]) => `<li class="spec"><span>${esc(k)}</span><b>${esc(v)}</b></li>`).join("")}</ul></header>
-    ${notices.length ? `<details class="notices" id="notices" ${rs(r).noticesOpen === false ? "" : "open"}><summary>${icon("warn")}<span class="warn-word">WARNING</span>${icon("warn")}<span>${notices.length} caveat${notices.length > 1 ? "s" : ""} before comparing the policies</span>
+    ${notices.length ? `<details class="notices" id="notices" ${rs(r).noticesOpen === false ? "" : "open"}><summary>${icon("warn")}<span class="warn-word">WARNING</span>${icon("warn")}
       <span class="nt-tags">${notices.map(n => `<span class="badge">${esc(n.title)}</span>`).join("")}</span>${icon("chev", "chev")}</summary>
-      <div class="table-wrap"><table class="ntable"><thead><tr><th class="num">#</th><th>Caveat</th><th>Details</th><th>What to do</th></tr></thead><tbody>
-      ${notices.map((n, i) => `<tr><td class="num">${i + 1}</td><td class="nt-title">${esc(n.title)}</td><td>${esc(n.text)}</td><td class="nt-todo">${n.todo ? esc(n.todo) : "–"}</td></tr>`).join("")}
+      <div class="table-wrap"><table class="ntable"><thead><tr><th class="num">#</th><th>Topic</th><th>What to know</th>${hasDefault ? "<th>Default</th>" : ""}<th>How to change</th></tr></thead><tbody>
+      ${notices.map((n, i) => `<tr><td class="num">${i + 1}</td><td class="nt-title">${esc(n.title)}</td><td class="nt-text">${esc(n.text)}</td>${hasDefault ? `<td class="nt-default">${n.default ? esc(n.default) : "–"}</td>` : ""}<td class="nt-todo">${n.todo ? esc(n.todo) : "–"}</td></tr>`).join("")}
       </tbody></table></div></details>` : ""}
     <section class="kpis" id="kpis" aria-label="Key numbers"></section>
     ${missing.length ? `<p class="missing">Not stored in this folder: ${esc(missing.join("; "))}.</p>` : ""}

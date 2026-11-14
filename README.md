@@ -8,7 +8,8 @@ are reproducible (fixed seeds) and their results open in an interactive dashboar
 > **Default hyperparameters are the values of the papers** (`alpha=1`: theoretical confidence bounds).
 > They are safe in theory but often explore too much in practice.
 > To fit them to your problem, run a grid search (`param_grid=True`) or set them (`bk.LinUCB(alpha=0.1)`).
-> Every experiment starts with a numbered warning that lists what to know about its settings.
+> Every experiment starts with a numbered warning. For each item, it says what to know,
+> what the default is, and how to change it.
 
 ## Ready example
 
@@ -42,8 +43,8 @@ Open [`dashboard.html`](dashboard.html) in a browser (no install, no server). It
 folders of [`results/`](results):
 
 * pick a folder in the sidebar, or add folders from disk with **Open a results folder**;
-* read the setting of the run as tags, its warning as a table, and its key numbers (best policy,
-  runner-up, fastest policy);
+* read the setting of the run as tags, its warning as a table (what to know, default, how to
+  change it), and its key numbers (best policy, runner-up, fastest policy);
 * read the summary under the learning curve: best policy, runner-up, whether their 95% intervals
   overlap, last policy;
 * choose, in the floating bar, the metric, cumulative or per-step values, the band (95% interval or ± 1 sd),

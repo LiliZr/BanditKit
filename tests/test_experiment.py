@@ -211,9 +211,12 @@ def test_launch_warning_adapts_to_the_settings(capsys, monkeypatch):
     res = bk.Experiment(env, [bk.UCB1(), bk.Random()], horizon=5, seed=0, log_interval=2).run()
     err = capsys.readouterr().err
     assert WARNING_TITLE in err and "\033[" not in err  # NO_COLOR: two rules instead of a colored band
-    assert " 1) Default hyperparameters. Paper values: alpha=1 for UCB1." in err and "→ Grid search: param_grid=True" in err
+    assert " 1) Default hyperparameters. UCB1 uses the values from its paper: alpha=1." in err
+    assert "Default: The values from the papers (param_grid=None)." in err
+    assert "How to change: Search the best values with param_grid=True." in err
+    assert all(n["default"] and n["todo"] for n in res.meta["notices"])  # what is the default, how to change it
     assert "Not stored" in err and 'track=["pseudo_regret"' in err and "One run" in err and "log_interval=2" in err
-    assert all(n["text"][0].isupper() for n in res.meta["notices"])  # each point starts with a capital letter
+    assert all(n["text"][0].isupper() for n in res.meta["notices"])  # each item starts with a capital letter
     assert "UCB1: default alpha=1" in err
     keys = [n["key"] for n in res.meta["notices"]]  # kept with the results (the dashboard shows them)
     assert keys == ["defaults", "assumed", "not_stored", "runs", "log_interval"]  # Gaussian rewards: b unknown
