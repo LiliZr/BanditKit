@@ -108,15 +108,15 @@ def test_run_several_configs(tmp_path):
 
 def test_summary_for_the_dashboard(tmp_path):
     env = bk.sample_instances("multi_user", n_instances=1, n_actions=30, n_features=4, n_users=6, n_clusters=2, seed=0)
-    res = bk.Experiment(env, {"LinUCB": bk.LinUCB(user_model="individual"), "CLUB": bk.CLUB(), "LinUCB searched": bk.LinUCB()}, horizon=60,
+    res = bk.Experiment(env, {"LinUCB": bk.LinUCB(user_model="individual"), "CLUB": bk.CLUB(), "LinUCB-searched": bk.LinUCB()}, horizon=60,
                         n_runs=3, seed=0, verbose=0, track=["clusters"],
-                        param_grid={"LinUCB searched": {"alpha": [0.1, 1.0], "lambda_": [0.1, 1.0]}}, search_runs=1).run()
+                        param_grid={"LinUCB-searched": {"alpha": [0.1, 1.0], "lambda_": [0.1, 1.0]}}, search_runs=1).run()
     s = report.summarize(res, "x")
     assert s["schema"] == 2 and s["curves"]["regret"]["CLUB"]["n"] == 3 and len(s["curves"]["regret"]["CLUB"]["sd"]) == len(s["steps"])
     assert s["final"]["regret"]["CLUB"]["sd"] >= 0 and len(s["final"]["regret"]["CLUB"]["values"]) == 3
     assert "n_user_clusters" in s["curves"] and s["metric_groups"]["n_user_clusters"] == "policy state"
     assert "n_buckets" not in s["curves"]  # always 0 without buckets: not worth a chart
-    assert list(s["search"]) == ["LinUCB searched"] and len(s["search"]["LinUCB searched"]["rows"]) == 4
+    assert list(s["search"]) == ["LinUCB-searched"] and len(s["search"]["LinUCB-searched"]["rows"]) == 4
     assert [n["key"] for n in s["notices"]][:2] == ["defaults", "search"]
 
 

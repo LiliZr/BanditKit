@@ -1063,8 +1063,9 @@ let fontStatus = "Checking the font…";
 });
 // Key phrases of the warning are marked **like this**: shown in bold.
 const bold = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong class="em">$1</strong>');
-// Settings and calls inside a sentence (param_grid=None, track=["actions"], LinUCB(alpha=0.1)) are shown as code.
-const CODE_RE = /[A-Za-z_][\w.]*(?:\([^()]*\)|=(?:\[[^\]]*\]|\{[^}]*\}|\([^)]*\)|[^\s,;)]+))/g;
+// Settings and class calls inside a sentence (param_grid=None, track=["actions"], LinUCB(alpha=0.1)) are shown as
+// code; math such as sqrt(ln(2/delta)) stays text.
+const CODE_RE = /[A-Z][\w.]*\([^()]*\)|[A-Za-z_][\w.]*=(?:\[[^\]]*\]|\{[^}]*\}|\([^)]*\)|[^\s,;)]+)/g;
 const marked = t => {
   let out = "", last = 0;
   for (const m of String(t).matchAll(CODE_RE)) {
