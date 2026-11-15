@@ -441,7 +441,7 @@ class Experiment:
             example = f"{cls}({key}={_fmt(_EXAMPLE_VALUES.get(key, params[key]))})"
             groups: Dict[str, List[str]] = {}  # same values, one group: "alpha=1 for UCB1 and KL-UCB"
             for label, (_, p) in defaults.items():
-                groups.setdefault(" ".join(f"{k}={_fmt(v)}" for k, v in p.items()), []).append(label)
+                groups.setdefault(", ".join(f"{k}={_fmt(v)}" for k, v in p.items()), []).append(label)
             others = [label for label in self.policies if label not in defaults]
             use = t("use", "used")
             if len(groups) == 1 and not others:
@@ -464,8 +464,27 @@ class Experiment:
                 used += f" You chose some values of {_list(partly)}."
             if searched:
                 used += f" The values of {_list(searched)} {t('come', 'came')} from the grid search."
+            sources: Dict[str, List[str]] = {}  # "the OFUL radius" for LinUCB: not the radius of its own paper
+            for label, (_, p) in defaults.items():
+                source = self.policies[label].radius_source
+                if source and "alpha" in p:
+                    sources.setdefault(source, []).append(label)
+            for source, labels in sources.items():
+                used += f" {_list(labels)} {_verb(labels, t('uses', 'used'), use)} {source}."
+                for label in labels:
+                    note = getattr(self.policies[label], "radius_note", None)
+                    if note:
+                        used += f" For {label}, it is {note}."
+            unsafe = [label for label in defaults if self.policies[label].missing_guarantee]
+            if not unsafe:
+                safe = "These values are safe in theory."
+            elif len(unsafe) == len(defaults):
+                safe = f"But {_list(unsafe)} {_verb(unsafe, 'has', 'have')} **no regret guarantee** (see below)."
+            else:
+                safe = (f"These values are safe in theory, except for {_list(unsafe)}: "
+                        f"{_verb(unsafe, 'it has', 'they have')} **no regret guarantee** (see below).")
             add("defaults", "Default hyperparameters",
-                f"{used} These values are safe in theory. In practice, they often **explore too much**. "
+                f"{used} {safe} In practice, they often **explore too much**. "
                 "The regret can then be higher than with tuned values.",
                 "The values from the papers (param_grid=None).",
                 f"Search the best values with param_grid=True. Or set them yourself, e.g. {example}.")
@@ -496,6 +515,52 @@ class Experiment:
                 f"The policies {t('assume', 'assumed')} them: {values}.",
                 "1 when the problem does not give them.",
                 f"Give the true values, e.g. {example}.")
+
+        reasons: Dict[str, List[str]] = {}
+        for label, policy in self.policies.items():
+            reason = policy.missing_guarantee
+            if reason:
+                reasons.setdefault(reason, []).append(label)
+        if reasons:
+            labels = [label for group in reasons.values() for label in group]
+            if len(reasons) == 1:
+                why = f": {next(iter(reasons))}."
+            else:
+                why = ". " + " ".join(f"{_list(group)}: {reason}." for reason, group in reasons.items())
+            add("guarantee", "No regret guarantee",
+                f"{_list(labels)} {_verb(labels, 'has', 'have')} **no proven regret bound**{why} "
+                f"{_verb(labels, 'Its', 'Their')} results can still be good, but nothing bounds "
+                f"{_verb(labels, 'its', 'their')} regret.",
+                'Policies as in their papers: no projection, no buckets, no k-means '
+                '(n_components=None, n_buckets=None, user_model="shared").',
+                "For a regret bound, pick a policy that has one (its docstring says), "
+                "or turn off its heuristic option.")
+        arbitrary: Dict[str, List[str]] = {}
+        for label, notes in self._notes.items():
+            for kind, text in notes:
+                if kind == "arbitrary" and text.split("=", 1)[0] not in (grids.get(label) or {}):
+                    arbitrary.setdefault(text, []).append(label)
+        if arbitrary:
+            text, labels = next(iter(arbitrary.items()))
+            param = text.split("=", 1)[0]
+            value = _ARBITRARY_EXAMPLES.get(param)
+            example = f" Or set them, e.g. {type(self.policies[labels[0]]).__name__}({param}={_fmt(value)})." if value else ""
+            everyone = list(self.policies)
+
+            def who(group: List[str]) -> str:
+                rest = [label for label in everyone if label not in group]
+                if not rest:
+                    return "all policies"
+                if len(group) >= 3 and len(rest) <= 2:
+                    return f"all policies except {_list(rest)}"
+                return _list(group)
+
+            listed = "; ".join(f"{text} for {who(group)}" for text, group in arbitrary.items())
+            add("arbitrary", "Values with no theoretical choice",
+                f"Some policies {t('keep', 'kept')} defaults with **no value from theory**: {listed}. "
+                "Other values can give a lower or a higher regret.",
+                "These values (each policy's docstring explains them).",
+                f"Search them with param_grid, e.g. param_grid={{\"{param}\": [...]}}.{example}")
 
         bucketed = [label for label, p in self.policies.items() if p.get_params().get("n_buckets")]
         if bucketed:
@@ -718,6 +783,9 @@ def _say(message: str) -> None:
 #: Title of the warning printed when a run starts (see :meth:`Experiment.notices`).
 WARNING_TITLE = "/!\\ WARNING /!\\"
 _EXAMPLE_VALUES = {"alpha": 0.1, "lambda_": 0.01, "c": 0.0, "epsilon": 0.05, "tau": 0.1}
+#: Example values for hyperparameters with no theoretical value (see the "arbitrary" item of the warning).
+_ARBITRARY_EXAMPLES = {"lambda_": 1.0, "delta": 0.05, "rho": 1.5, "c": 5.0, "epsilon": 0.05, "tau": 0.05,
+                       "alpha": 0.5, "cluster_alpha": 1.0}
 
 
 def _use_color(stream: Any) -> bool:

@@ -82,8 +82,11 @@ class Policy:
     #: Generate the signature and docstring Parameters from ``params`` (False for generic wrappers).
     document_params: ClassVar[bool] = True
     #: Hyperparameters whose default value is arbitrary (no theoretical value): name -> reason.
-    #: Reported by :meth:`parameter_notes` when left at the default.
-    arbitrary_defaults: ClassVar[Dict[str, str]] = {}
+    #: Reported by :meth:`parameter_notes` when left at the default. A subclass removes an
+    #: inherited entry by mapping it to None.
+    arbitrary_defaults: ClassVar[Dict[str, Optional[str]]] = {}
+    #: Why this policy has no proven regret bound (None: it has one). See :attr:`missing_guarantee`.
+    no_guarantee: ClassVar[Optional[str]] = None
 
     #: Parameters searched by ``Experiment(param_grid=True)`` when the policy has them.
     default_search_params: ClassVar[Tuple[str, ...]] = ("alpha", "lambda_")
@@ -191,18 +194,39 @@ class Policy:
         self._start_counts(spec)
         self._check_spec(spec)
         self._reset()
-        specs = self._all_params()
+        specs, unused = self._all_params(), self._unused_params()
         for key, reason in self._all_arbitrary().items():
-            if key in self._params and self._params[key] == specs[key].default:
+            if key in self._params and key not in unused and self._params[key] == specs[key].default:
                 self._note("arbitrary", f"{key}={self._params[key]!r} ({reason})")
         self._ready = True
 
     @classmethod
     def _all_arbitrary(cls) -> Dict[str, str]:
-        merged: Dict[str, str] = {}
+        merged: Dict[str, Optional[str]] = {}
         for klass in reversed(cls.__mro__):
             merged.update(vars(klass).get("arbitrary_defaults", {}))
-        return merged
+        return {k: v for k, v in merged.items() if v is not None}
+
+    def _unused_params(self) -> FrozenSet[str]:
+        """Hyperparameters the current setting does not use (never reported as arbitrary)."""
+        return frozenset()
+
+    @property
+    def missing_guarantee(self) -> Optional[str]:
+        """Why no regret bound is proven for this policy with its current hyperparameters (None: one is).
+
+        Heuristic options (random projection, arm buckets, k-means users) and policies whose
+        paper proves no bound return a short reason, shown in the warning of an experiment.
+        """
+        return self.no_guarantee
+
+    @property
+    def radius_source(self) -> Optional[str]:
+        """Where the default confidence width comes from, when not from the policy's own paper.
+
+        For example "the OFUL radius (Abbasi-Yadkori et al., 2011)" for LinUCB. Shown in the warning.
+        """
+        return None
 
     def _note(self, kind: str, text: str) -> None:
         """Record how a hyperparameter was set for this run (see :meth:`parameter_notes`)."""

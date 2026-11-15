@@ -196,7 +196,8 @@ def test_parameter_notes():
     p = bk.LinUCB()
     p.reset(lin.spec, seed=0)
     notes = dict((text.split(":")[0].split("=")[0], kind) for kind, text in p.parameter_notes())
-    assert notes == {"subgaussian": "from_problem", "theta_bound": "from_problem", "lambda_": "arbitrary"}
+    assert notes == {"subgaussian": "from_problem", "theta_bound": "from_problem", "lambda_": "arbitrary",
+                     "delta": "arbitrary"}
     assert p._R == pytest.approx(0.2) and p._S == pytest.approx(0.5)
     q = bk.MABEpsilonGreedy()
     q.reset(bk.make_env(means=[0.1, 0.2]).spec, seed=0)
@@ -253,3 +254,54 @@ def test_warning_names_the_policies_whose_values_you_chose():
     # Values chosen for every policy: nothing to warn about.
     exp = bk.Experiment(env, [bk.UCB1(alpha=0.2), bk.UCBV(alpha=0.5)], horizon=5)
     assert "defaults" not in [n["key"] for n in exp.notices()]
+
+
+def test_guarantees_and_values_with_no_theory_in_the_warning():
+    # Policies with no proven regret bound, and why.
+    assert bk.UCB1Tuned().missing_guarantee and bk.CBRAP(n_components=2).missing_guarantee
+    assert "projection" in bk.LinUCB(n_components=2).missing_guarantee
+    assert "buckets" in bk.LinUCB(n_buckets=2).missing_guarantee
+    assert "k-means" in bk.LinUCB(user_model="kmeans", n_user_clusters=2).missing_guarantee
+    assert bk.LinUCB().missing_guarantee is None and bk.UCB1().missing_guarantee is None
+    assert bk.SCLUB(split_merge_freq=10).missing_guarantee and bk.SCLUB().missing_guarantee is None
+    # lambda = 1 is the value of the papers of LinTS, CLUB and SCLUB: not flagged as arbitrary.
+    assert bk.LinTS().lambda_ == bk.CLUB().lambda_ == bk.SCLUB().lambda_ == 1.0
+    lin = bk.make_env(action_features=np.eye(3), theta=[0.3, 0.4, 0.0], noise_std=0.2)
+    p = bk.LinTS()
+    p.reset(lin.spec, seed=0)
+    assert [t.split("=")[0] for k, t in p.parameter_notes() if k == "arbitrary"] == ["delta"]
+    # rho is flagged for the variants that use it only; c for the 'auer' schedule only.
+    mab = bk.make_env(means=[0.2, 0.5])
+    spec = bk.EnvSpec(n_actions=2, reward_dim=1, horizon=100)
+    for policy, flagged in ((bk.UCBV2(), "rho"), (bk.UCBMinV2(), "rho"), (bk.UCBMinV1(), "zeta"),
+                            (bk.MABEpsilonGreedy(schedule="auer", d=0.1), "c")):
+        policy.reset(spec, seed=0)
+        names = [t.split("=")[0] for k, t in policy.parameter_notes() if k == "arbitrary"]
+        assert names == ([flagged] if flagged else [])
+    # The warning names the OFUL radius, the policies without a bound and the values with no theory.
+    env = bk.make_env(action_features=np.eye(4), theta=[0.3, 0.4, 0.0, 0.1], noise_std=0.2)
+    exp = bk.Experiment(env, [bk.LinUCB(), bk.ConfidenceBall1(), bk.CBRAP(n_components=2)], horizon=5, verbose=0)
+    notices = {n["key"]: n["text"] for n in exp.notices()}
+    assert "**OFUL radius**" in notices["defaults"] and "Dani et al., 2008" in notices["defaults"]
+    assert "except for CBRAP" in notices["defaults"] and "CBRAP has **no proven regret bound**" in notices["guarantee"]
+    assert "delta=0.01" in notices["arbitrary"] and "lambda_=0.1" in notices["arbitrary"]
+    assert bk.Experiment(mab, [bk.UCB1()], horizon=5, verbose=0).notices()[0]["text"].count("safe in theory.") == 1
+
+
+def test_mixture_mab_rewards_and_means():
+    env = bk.MixtureMAB([[(0.5, "bernoulli", (0.9,)), (0.5, "beta", (2, 6))],
+                         [(1, "uniform", (0.2, 0.6))],
+                         [(0.3, "clipped_gaussian", (0.5, 0.2)), (0.7, "constant", (0.1,))]])
+    assert env.spec.reward_range == 1.0 and env.spec.n_actions == 3
+    exact = env.mean_rewards(None)[:, 0]
+    assert exact[0] == pytest.approx(0.5 * 0.9 + 0.5 * 2 / 8) and exact[1] == pytest.approx(0.4)
+    env.reset(seed=0)
+    draws = np.array([[env._sample_reward(a, None)[0] for _ in range(20000)] for a in range(3)])
+    assert draws.min() >= 0.0 and draws.max() <= 1.0
+    assert np.allclose(draws.mean(axis=1), exact, atol=0.01)
+    with pytest.raises(ValueError):
+        bk.MixtureMAB([[(1, "uniform", (0.6, 0.2))]])
+    envs = bk.sample_instances("mixed", 4, 8, min_gap=0.05, seed=3)
+    assert len(envs) == 4 and all(isinstance(e, bk.MixtureMAB) for e in envs)
+    res = bk.Experiment(envs, [bk.UCB1(), bk.KLUCB()], horizon=50, seed=0, verbose=0).run()
+    assert set(res.labels) == {"UCB1", "KLUCB"}

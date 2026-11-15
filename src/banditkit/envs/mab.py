@@ -157,6 +157,97 @@ class BernoulliMAB(_StaticMAB):
         return (self.np_random.random(self._means.shape[1]) < self._means[action]).astype(np.float64)
 
 
+class MixtureMAB(_StaticMAB):
+    """Actions whose reward is drawn from a mixture of distributions on [0, 1].
+
+    A step on action a first draws one of its components (with the component
+    weights), then a reward from that component. So an arm can be bimodal, skewed,
+    discrete and continuous at once: no Bernoulli or Gaussian model fits it. Mean
+    rewards are exact.
+
+    Parameters
+    ----------
+    arms : sequence of n_actions mixtures
+        A mixture is a sequence of components ``(weight, family, params)``:
+
+        * ``("bernoulli", (p,))``: 1 with probability p, else 0;
+        * ``("beta", (a, b))``: Beta(a, b);
+        * ``("uniform", (low, high))``: uniform on [low, high] inside [0, 1];
+        * ``("clipped_gaussian", (mu, sigma))``: N(mu, sigma^2) clipped to [0, 1];
+        * ``("constant", (c,))``: always c.
+
+        The weights of an arm are normalized to sum to 1.
+    """
+
+    FAMILIES = ("bernoulli", "beta", "uniform", "clipped_gaussian", "constant")
+
+    def __init__(self, arms: Sequence[Sequence[Any]]) -> None:
+        super().__init__()
+        if not isinstance(arms, (list, tuple)) or not arms:
+            raise TypeError("`arms` must be a non-empty list with one mixture per action.")
+        self._arms = []
+        means = []
+        for i, mixture in enumerate(arms):
+            if not isinstance(mixture, (list, tuple)) or not mixture:
+                raise TypeError(f"arms[{i}] must be a non-empty list of (weight, family, params).")
+            comps, weights = [], []
+            for j, comp in enumerate(mixture):
+                if len(comp) != 3:
+                    raise ValueError(f"arms[{i}][{j}] must be (weight, family, params), got {comp!r}.")
+                weight, family, params = comp
+                weights.append(check_float(f"arms[{i}][{j}] weight", weight, low=0.0, low_inclusive=False))
+                comps.append(self._check_component(f"arms[{i}][{j}]", check_choice("family", family, self.FAMILIES),
+                                                   tuple(float(x) for x in params)))
+            w = np.asarray(weights) / np.sum(weights)
+            self._arms.append((w, comps))
+            means.append(float(np.dot(w, [self._component_mean(f, q) for f, q in comps])))
+        self._means = np.asarray(means)[:, None]
+        # Rewards in [0, 1]: 1/2-sub-Gaussian (Hoeffding).
+        self._spec = EnvSpec(n_actions=len(self._arms), reward_dim=1, reward_range=1.0, noise_std=0.5)
+
+    @staticmethod
+    def _check_component(name: str, family: str, q: tuple) -> tuple:
+        n = {"bernoulli": 1, "beta": 2, "uniform": 2, "clipped_gaussian": 2, "constant": 1}[family]
+        if len(q) != n:
+            raise ValueError(f"{name}: {family} takes {n} parameter(s), got {len(q)}.")
+        ok = {"bernoulli": lambda: 0.0 <= q[0] <= 1.0, "beta": lambda: q[0] > 0 and q[1] > 0,
+              "uniform": lambda: 0.0 <= q[0] < q[1] <= 1.0, "clipped_gaussian": lambda: q[1] >= 0.0,
+              "constant": lambda: 0.0 <= q[0] <= 1.0}[family]()
+        if not ok:
+            raise ValueError(f"{name}: invalid {family} parameters {q}.")
+        return family, q
+
+    @staticmethod
+    def _component_mean(family: str, q: tuple) -> float:
+        if family in ("bernoulli", "constant"):
+            return q[0]
+        if family == "beta":
+            return q[0] / (q[0] + q[1])
+        if family == "uniform":
+            return (q[0] + q[1]) / 2.0
+        return float(_clipped_gaussian_mean(np.array([q[0]]), np.array([q[1]]), 0.0, 1.0)[0])
+
+    @property
+    def spec(self) -> EnvSpec:
+        return self._spec
+
+    def _sample_reward(self, action: int, obs: Observation) -> np.ndarray:
+        rng = self.np_random
+        w, comps = self._arms[action]
+        family, q = comps[int(rng.choice(len(comps), p=w))]
+        if family == "bernoulli":
+            r = float(rng.random() < q[0])
+        elif family == "beta":
+            r = rng.beta(q[0], q[1])
+        elif family == "uniform":
+            r = rng.uniform(q[0], q[1])
+        elif family == "clipped_gaussian":
+            r = min(1.0, max(0.0, rng.normal(q[0], q[1])))
+        else:
+            r = q[0]
+        return np.array([r], dtype=np.float64)
+
+
 class EmpiricalMAB(_StaticMAB):
     """Actions that return reward vectors resampled from observed data.
 

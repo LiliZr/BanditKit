@@ -13,7 +13,7 @@ are reproducible (fixed seeds) and their results open in an interactive dashboar
 
 ## Ready example
 
-The repository ships the results of five example experiments ([`results/`](results)) and the
+The repository ships the results of six example experiments ([`results/`](results)) and the
 dashboard built from them: learning curves, final values, trade-offs between regret, CPU time and
 memory (in 3D too), a grid search, and a look inside the policies. Right after cloning, open it,
 with nothing to install:
@@ -63,7 +63,7 @@ folders of [`results/`](results):
   arm buckets, user clusters, Pareto front.
 
 Charts load plotly.js from the internet; `python -m banditkit dashboard --offline` embeds it too.
-The font (Source Sans 3, SIL Open Font License) is always inside the page.
+The font (Poppins, SIL Open Font License) is always inside the page.
 
 Each folder of `results/` is the output of the configuration of [`configs/`](configs) with
 the same name. The problems are synthetic, drawn from fixed seeds:
@@ -71,9 +71,10 @@ the same name. The problems are synthetic, drawn from fixed seeds:
 | Folder | Problem | Policies |
 | --- | --- | --- |
 | `mab-bernoulli` | 10 Bernoulli MABs, 10 arms | UCB1, UCB1-Tuned, UCB-V, UCB-min, KL-UCB, Thompson Sampling, Random |
+| `mab-mixed` | 10 MABs, 10 arms; each arm a random mixture of Bernoulli, Beta, uniform and clipped Gaussian rewards | UCB1, UCB1-Tuned, UCB1-Normal, UCB-V, UCB-V2, UCB-min (V1, V2), EUCBV, KL-UCB, Bernoulli and Gaussian Thompson Sampling, Random |
 | `linear-synthetic` | 10 linear bandits, 1000 actions in R^20 | LinUCB, ConfidenceBall1, LinUCB with arm buckets or random projection, CBRAP, SOFUL, CBSCFD, LinTS |
 | `linear-search` | 5 linear bandits, 200 actions in R^10 | LinUCB and LinTS: defaults against values found by a grid search |
-| `multi-user-synthetic` | 100 users in 5 clusters, 20 actions offered per step | LinUCB (shared, per user, k-means users), CLUB, SCLUB |
+| `multi-user-synthetic` | 50 users in 5 clusters, 20 actions offered per step, T = 30,000 | LinUCB (shared, per user, k-means users), CLUB, SCLUB |
 | `pareto-two-objectives` | two-objective MAB with a concave Pareto front | Pareto UCB1, UCB1, Random |
 
 ## Run experiments
@@ -163,9 +164,9 @@ what is not stored.
 
 | Parameter | Meaning |
 | --- | --- |
-| `alpha` | scale of the exploration bonus; 1 is the bound of the paper |
-| `lambda_` | ridge regularization of linear policies (0.1; no theoretical value) |
-| `delta` | confidence level of the bounds |
+| `alpha` | scale of the exploration bonus; 1 is the bound of the paper (for LinUCB and ConfidenceBall1: the OFUL radius) |
+| `lambda_` | ridge regularization of linear policies (0.1, no theoretical value; 1 for LinTS, CLUB and SCLUB, as in their papers) |
+| `delta` | confidence level of the bounds (0.01, no theoretical value) |
 | `n_components`, `projection` | random projection to k dimensions (`"gaussian"` or `"fjlt"`) |
 | `sketch_size` | size of the Frequent Directions sketch (SOFUL, CBSCFD) |
 | `user_model` | multi-user LinUCB: `"shared"`, `"individual"` or `"kmeans"` |
@@ -187,9 +188,17 @@ R sqrt(9 d ln(t/delta))), Gaussian Thompson Sampling (variance b² / (n + 1)) an
 (split threshold 4 R sqrt(d / lambda_x)). CLUB has no theoretical value for `alpha` and
 `cluster_alpha`; its paper tunes them on the data.
 
+**What the theory covers.** The launch warning lists the defaults with no value from theory
+(`lambda_`, `delta`, `rho` of UCB-V2 and UCB-minV2, `c` of the `"auer"` schedule of epsilon-greedy...)
+and the policies with no proven regret bound: UCB1-Tuned (its paper proves none), CBRAP (its
+erratum gives a bound linear in T), constant epsilon-greedy and softmax, and every policy with a
+random projection, arm buckets or k-means users.
+
 ## Datasets
 
-* **Synthetic**: `bk.sample_instances("bernoulli" | "gaussian" | "linear" | "multi_user", n_instances, ...)`.
+* **Synthetic**: `bk.sample_instances("bernoulli" | "gaussian" | "mixed" | "linear" | "multi_user", n_instances, ...)`.
+  `"mixed"` draws each arm from a mixture of 2 or 3 components (Bernoulli, Beta, uniform, Gaussian clipped
+  to [0, 1]), so no single family fits the rewards (`bk.MixtureMAB` builds one by hand).
 * **MovieLens** ([GroupLens](https://grouplens.org/datasets/movielens/)): downloaded on first use
   into `~/banditkit_data` (or `$BANDITKIT_DATA`). Variants `small`, `1m`, `20m`, `25m`, `32m`.
 * **Steam** ([Kaggle](https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam)):

@@ -129,7 +129,7 @@ def test_arbitrary_or_assumed_values_raise_a_warning():
         bk.LinUCB().fit(X, y)
     with warnings.catch_warnings():
         warnings.simplefilter("error", bk.ParameterWarning)
-        bk.LinUCB(lambda_=1.0, subgaussian=0.1, theta_bound=2.0).fit(X, y)
+        bk.LinUCB(lambda_=1.0, delta=0.05, subgaussian=0.1, theta_bound=2.0).fit(X, y)
 
 
 def test_scikit_learn_clone():

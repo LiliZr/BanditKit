@@ -45,7 +45,8 @@ CAPTIONS = {
     "buckets": "Left: one column per bucket (UCB range in gray, champion as a diamond). Step 1 picks the bucket of "
                "the best champion. Right: the arms of that bucket; step 2 plays the best UCB among them and the "
                "champions (orange). The black ring is the arm LinUCB without buckets would play.",
-    "clusters": "Number of user clusters each policy keeps over time. The dotted line is the true number of groups.",
+    "clusters": ("Number of user clusters each policy keeps over time. The dotted line is the true number of "
+                 "groups. When a policy keeps far more clusters than that (one model per user), the axis is logarithmic."),
 }
 
 
@@ -68,7 +69,7 @@ def explain(env, policies: Dict[str, Any], weights=None, horizon: int = 2000, se
             n_true_groups: Optional[int] = None) -> List[Dict[str, Any]]:
     """Explanatory charts of ``policies`` on ``env``, from one traced run per policy.
 
-    The traced run lasts at most 2000 steps (10,000 on multi-user problems, where clusters form late).
+    The traced run lasts at most 2000 steps (50,000 on multi-user problems, where clusters form late).
 
     Returns a list of ``{"kind", "policy", "title", "caption", "figure"}`` (``policy`` is None for a
     chart of the problem). Which charts: MAB policies get the indices of the arms ("why this
@@ -83,7 +84,7 @@ def explain(env, policies: Dict[str, Any], weights=None, horizon: int = 2000, se
     from .trace import trace
 
     spec = env.spec
-    horizon = int(min(horizon, 10_000 if spec.family == "multi_user" else 2000))
+    horizon = int(min(horizon, 50_000 if spec.family == "multi_user" else 2000))  # clustering needs the whole run
     every = max(1, horizon // 60)
     out: List[Dict[str, Any]] = []
 

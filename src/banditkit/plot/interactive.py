@@ -7,6 +7,8 @@ Save one with ``fig.write_html(path)`` (interactive) or ``fig.write_image(path)`
 """
 from __future__ import annotations
 
+import math
+
 from math import lgamma
 from typing import Optional, Sequence
 
@@ -478,10 +480,18 @@ def clusters(traces: Sequence, n_true_groups: int = None):
                             showlegend=False)
         fig.add_scatter(x=steps, y=mean, mode="lines+markers", name=label + _runs_suffix(runs),
                         line=dict(color=color, width=2), marker=dict(color=color, **_marks(steps, j, len(by_label))))
-    if n_true_groups is not None:
-        fig.add_hline(y=n_true_groups, line=dict(color=INK_SECONDARY, width=1, dash="dot"),
-                      annotation_text="True groups", annotation_position="top left")
-    return _style(fig, "User clusters", "Round", "Clusters")
+    # One model per user puts n_users on the axis: a log scale keeps a handful of groups readable.
+    top = max((max(tr.snapshots["n_user_clusters"]) for runs in by_label.values() for tr in runs), default=1)
+    log = top >= 10 * max(n_true_groups or 1, 1)
+    if n_true_groups is not None:  # shapes on a log axis take log10 of the value
+        fig.add_hline(y=math.log10(n_true_groups) if log else n_true_groups,
+                      line=dict(color=INK_SECONDARY, width=1, dash="dot"),
+                      annotation_text=f"True groups: {n_true_groups}", annotation_position="top left")
+    fig = _style(fig, "User clusters", "Round", "Clusters")
+    if log:
+        ticks = [v for v in (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000) if v <= 2 * top]
+        fig.update_yaxes(type="log", title_text="Clusters (log scale)", tickvals=ticks, ticktext=[str(v) for v in ticks])
+    return fig
 
 
 def bucket_choice(trace, max_frames: int = 40):

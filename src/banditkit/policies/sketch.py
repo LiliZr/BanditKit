@@ -128,7 +128,7 @@ class SOFUL(SketchPolicy):
     """SOFUL (Kuzborskij, Cella and Cesa-Bianchi, AISTATS 2019).
 
     Frequent Directions with m rows, shrunk at every step (Algorithm 4 of the
-    paper). Radius (Theorem 2), with rho the accumulated sketch error::
+    paper). Radius (Theorem 2, Eq. 10), with rho the accumulated sketch error::
 
         R sqrt(m ln(1 + n L^2 / (m lambda)) + 2 ln(1/delta) + k ln(1 + rho/lambda)) sqrt(1 + rho/lambda)
             + S sqrt(lambda) (1 + rho/lambda)
@@ -150,9 +150,12 @@ class CBSCFD(SketchPolicy):
 
     The sketch (SCFD) buffers 2m rows before each shrink, and the regularization
     grows with the sketch error: ``c = lambda + Delta``, Delta the sum of the
-    shrinkages. Radius (Theorem 2)::
+    shrinkages. Radius::
 
         R sqrt(2 ln(1/delta) + m ln(1 + n L^2 / (m lambda)) + k ln(1 + Delta/lambda)) + S sqrt(lambda + Delta)
+
+    with n the number of observations so far, as in Eq. 15 of the proof. Theorem 2
+    states it with the horizon T instead of n, which gives a wider radius before step T.
     """
 
     base_name = "CBSCFD"

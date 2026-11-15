@@ -1,0 +1,58 @@
+{
+  "description": "Classical MAB with rewards that follow no single family: 10 instances with 10 arms, each arm a random mixture of 2 or 3 components (Bernoulli, Beta, uniform, Gaussian clipped to [0, 1]), gap >= 0.05, 2 runs each. Policies built for Bernoulli (KL-UCB, Bernoulli Thompson Sampling) or Gaussian rewards (UCB1-Normal, Gaussian Thompson Sampling) against distribution-free and variance-aware ones. Theoretical defaults.",
+  "env": {
+    "kind": "mixed",
+    "n_instances": 10,
+    "n_actions": 10,
+    "min_gap": 0.05,
+    "seed": 0
+  },
+  "policies": [
+    {
+      "policy": "UCB1"
+    },
+    {
+      "policy": "UCB1Tuned"
+    },
+    {
+      "policy": "UCB1Normal"
+    },
+    {
+      "policy": "UCBV"
+    },
+    {
+      "policy": "UCBV2"
+    },
+    {
+      "policy": "UCBMinV1"
+    },
+    {
+      "policy": "UCBMinV2"
+    },
+    {
+      "policy": "EUCBV"
+    },
+    {
+      "policy": "KLUCB"
+    },
+    {
+      "policy": "BernoulliThompsonSampling"
+    },
+    {
+      "policy": "GaussianThompsonSampling"
+    },
+    {
+      "policy": "Random"
+    }
+  ],
+  "experiment": {
+    "horizon": 10000,
+    "n_runs": 2,
+    "seed": 0,
+    "log_interval": 50,
+    "track": [
+      "pseudo_regret"
+    ],
+    "measure_memory": true
+  }
+}

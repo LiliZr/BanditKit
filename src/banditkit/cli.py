@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 __all__ = ["main", "build_env", "build_policies", "run_config"]
 
-SYNTHETIC = ("bernoulli", "gaussian", "linear", "multi_user")
+SYNTHETIC = ("bernoulli", "gaussian", "mixed", "linear", "multi_user")
 
 
 def build_env(spec: Dict[str, Any]):

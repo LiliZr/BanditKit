@@ -1738,8 +1738,9 @@ function select(i) {
   current = i;
   const r = run();
   r.final = r.final || {}; r.curves = r.curves || {};
-  if (!r.curves[ui.metric]) ui.metric = ["regret", "pareto_regret", "reward"].find(m => r.curves[m]) || Object.keys(r.curves)[0];
-  if (ui.ref && !r.policies.some(p => p.label === ui.ref)) ui.ref = "";
+  // Every folder opens on the cumulative regret, whatever was shown before.
+  ui.metric = ["regret", "pareto_regret", "reward"].find(m => r.curves[m]) || Object.keys(r.curves)[0];
+  ui.view = "cumulative"; ui.ref = "";
   try { history.replaceState(null, "", "#" + encodeURIComponent(r.name)); } catch (err) { /* file:// */ }
   renderList();
   renderMain();

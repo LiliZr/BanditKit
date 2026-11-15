@@ -19,6 +19,7 @@ from .envs import (  # noqa: E402
     GaussianMAB,
     GroupRecommendationMAB,
     LinearEnv,
+    MixtureMAB,
     MultiUserLinearEnv,
     make_env,
 )
@@ -33,7 +34,7 @@ from .trace import Trace, trace  # noqa: E402
 __all__ = [
     "__version__",
     "EnvSpec", "Observation",
-    "Environment", "make_env", "GaussianMAB", "BernoulliMAB", "EmpiricalMAB", "GroupRecommendationMAB",
+    "Environment", "make_env", "GaussianMAB", "BernoulliMAB", "MixtureMAB", "EmpiricalMAB", "GroupRecommendationMAB",
     "LinearEnv", "DynamicLinearEnv", "MultiUserLinearEnv",
     "Experiment", "TRACKABLE", "DEFAULT_PARAM_GRID", "sample_instances", "Results", "Trace", "trace",
     *_policies_all,

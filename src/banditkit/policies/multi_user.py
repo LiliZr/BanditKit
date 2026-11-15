@@ -10,14 +10,14 @@ from __future__ import annotations
 import math
 import warnings
 from collections import Counter, deque
-from typing import Any, Dict, Iterable, List, Set
+from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set
 
 import numpy as np
 
 from .._validation import ParamSpec
 from ..spec import EnvSpec, Observation
 from ._linear_core import RidgeModel
-from .linear import BucketedPolicy
+from .linear import OFUL_RADIUS, BucketedPolicy
 
 __all__ = ["CLUB", "SCLUB"]
 
@@ -31,9 +31,23 @@ def confidence_term(n: float) -> float:
 
 
 class ClusteringPolicy(BucketedPolicy):
-    """Per-user models and aggregation of user models into cluster models."""
+    """Per-user models and aggregation of user models into cluster models.
+
+    The ridge regularization defaults to lambda = 1: CLUB and SCLUB start every user
+    model from the identity matrix.
+    """
 
     families = frozenset({"multi_user"})
+    params = {"lambda_": ParamSpec("float", default=1.0, low=0.0, low_inclusive=False,
+                                   doc="Ridge regularization lambda (1: the identity of the papers).")}
+    arbitrary_defaults = {"lambda_": None}  # 1 is the value of the papers
+
+    def _unused_params(self) -> FrozenSet[str]:
+        return frozenset({"delta"}) if self.bonus == "paper" else frozenset()  # the paper widths have no delta
+
+    @property
+    def radius_source(self) -> Optional[str]:
+        return OFUL_RADIUS if self.bonus == "oful" else None
 
     def _reset(self) -> None:
         super()._reset()
@@ -261,6 +275,12 @@ class SCLUB(ClusteringPolicy):
         "split_merge_freq": ParamSpec("int", default=1, low=1, doc="Run split / merge tests every this many steps."),
         "bonus": BONUS,
     }
+
+    @property
+    def missing_guarantee(self) -> Optional[str]:
+        if self.split_merge_freq > 1:
+            return f"split and merge tests run every {self.split_merge_freq} steps, not at every step as in the paper"
+        return super().missing_guarantee
 
     def _check_spec(self, spec: EnvSpec) -> None:
         super()._check_spec(spec)

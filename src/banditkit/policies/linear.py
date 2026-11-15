@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
@@ -11,6 +11,9 @@ from .._validation import ParamSpec
 from ..spec import EnvSpec, Observation
 from ._linear_core import ActionBuckets, RidgeModel, make_projection, weighted_norms
 from .base import Policy
+
+#: Source of the default radius of LinUCB and its variants (shown in the warning of an experiment).
+OFUL_RADIUS = "the **OFUL radius** (Abbasi-Yadkori et al., 2011)"
 
 __all__ = ["LinUCB", "CBRAP", "ConfidenceBall1", "LinTS", "LinGreedy"]
 
@@ -48,13 +51,20 @@ class LinearPolicy(Policy):
         "dtype": ParamSpec("choice", default="float64", choices=("float64", "float32"), doc="Floating point precision."),
     }
 
-    arbitrary_defaults = {"lambda_": "any lambda > 0 keeps the bound valid"}
+    arbitrary_defaults = {"lambda_": "any lambda > 0 keeps the bound valid",
+                          "delta": "any delta in (0, 1): the bound holds with probability 1 - delta"}
 
     @property
     def techniques(self) -> Tuple[str, ...]:
         if self.n_components is None:
             return ()
         return ("FJLT",) if self.projection == "fjlt" else ("RP",)
+
+    @property
+    def missing_guarantee(self) -> Optional[str]:
+        if self.n_components is not None:
+            return "the bound of the full-dimension algorithm does not hold after a random projection"
+        return super().missing_guarantee
 
     def _check_spec(self, spec: EnvSpec) -> None:
         if self.n_components is not None and self.n_components >= spec.n_features:
@@ -136,6 +146,12 @@ class BucketedPolicy(LinearPolicy):
     @property
     def techniques(self) -> Tuple[str, ...]:
         return super().techniques + (("AB",) if self.n_buckets is not None else ())
+
+    @property
+    def missing_guarantee(self) -> Optional[str]:
+        if self.n_buckets is not None:
+            return "arm buckets can miss the best action"
+        return super().missing_guarantee
 
     def _check_spec(self, spec: EnvSpec) -> None:
         super()._check_spec(spec)
@@ -226,6 +242,16 @@ class LinUCB(BucketedPolicy):
         if self.user_model == "kmeans" and self.n_user_clusters > spec.n_users:
             raise ValueError(f"`n_user_clusters` ({self.n_user_clusters}) cannot exceed n_users ({spec.n_users}).")
 
+    @property
+    def missing_guarantee(self) -> Optional[str]:
+        if self.user_model == "kmeans":
+            return "k-means users are a heuristic"
+        return super().missing_guarantee
+
+    @property
+    def radius_source(self) -> Optional[str]:
+        return OFUL_RADIUS
+
     def _reset(self) -> None:
         super()._reset()
         self.models: Dict[int, RidgeModel] = {}  # key: 0 (shared) or user_id
@@ -304,10 +330,12 @@ class CBRAP(LinUCB):
 
         beta(n) = (sqrt(4 / m) + R) sqrt(m ln((1 + n L^2 / lambda) / delta)) + sqrt(lambda) S
 
-    A later erratum by the first author (arXiv:1903.08600) revises this analysis.
+    A later erratum by the first author (arXiv:1903.08600) revises this analysis: its
+    regret bound has a term linear in T. So CBRAP has no sublinear regret guarantee.
     """
 
     base_name = "CBRAP"
+    no_guarantee = "its erratum (arXiv:1903.08600) gives a regret bound with a term linear in T"
     params = {"projection": ParamSpec("choice", default="gaussian", choices=("gaussian",), doc="Fixed to 'gaussian'.")}
 
     def _check_params(self) -> None:
@@ -318,6 +346,15 @@ class CBRAP(LinUCB):
     @property
     def techniques(self) -> Tuple[str, ...]:
         return tuple(t for t in super().techniques if t != "RP")  # the projection is part of CBRAP
+
+    @property
+    def missing_guarantee(self) -> Optional[str]:
+        reason = super().missing_guarantee
+        return self.no_guarantee if reason is None or "random projection" in reason else reason
+
+    @property
+    def radius_source(self) -> Optional[str]:
+        return None  # Lemma 1 of its own paper
 
     def _beta(self, n_obs: int) -> float:
         m, lam = self.dim, self.lambda_
@@ -341,12 +378,19 @@ class ConfidenceBall1(SingleModelPolicy):
 
     The confidence set is an L1 ball in the V^1/2 geometry, of radius sqrt(k) beta(n).
     Its UCB on x is ``x . theta + alpha * sqrt(k) * beta(n) * ||V^-1/2 x||_inf``.
-    beta(n) is the OFUL radius (Abbasi-Yadkori et al., 2011), tighter than the radius
-    of Dani et al.: the L1 ball of radius sqrt(k) beta(n) contains the OFUL
-    ellipsoid, so the confidence level is kept.
+    beta(n) is the OFUL radius (Abbasi-Yadkori et al., 2011) instead of the radius of
+    Dani et al., because it is much tighter. The L1 ball of radius sqrt(k) beta(n)
+    contains the OFUL ellipsoid, so the confidence level is kept.
     """
 
     base_name = "ConfidenceBall1"
+
+    #: Shown in the warning after the source of the radius.
+    radius_note = "much tighter than the radius of its paper (Dani et al., 2008)"
+
+    @property
+    def radius_source(self) -> Optional[str]:
+        return OFUL_RADIUS
 
     def _predict(self, obs: Observation) -> int:
         X = self._working_features(obs)
@@ -363,10 +407,14 @@ class LinTS(SingleModelPolicy):
     Samples ``theta ~ N(theta_hat, (alpha v_t)^2 V^-1)`` and plays the best action
     for the sample, with ``v_t = R sqrt(9 k ln(t / delta))`` at round t (1-based):
     the scale of the final arXiv version (1209.3352), for an unknown horizon. The
-    paper assumes features and theta of norm at most 1, and lambda = 1.
+    paper assumes features and theta of norm at most 1, and starts from B = I
+    (lambda = 1, the default).
     """
 
     base_name = "LinTS"
+    params = {"lambda_": ParamSpec("float", default=1.0, low=0.0, low_inclusive=False,
+                                   doc="Ridge regularization lambda (1: B = I in the paper).")}
+    arbitrary_defaults = {"lambda_": None}  # 1 is the value of the paper
 
     def _scale(self) -> float:
         t = self.model.n_obs + 1
@@ -387,6 +435,7 @@ class LinGreedy(SingleModelPolicy):
     """Greedy on the ridge estimate, uniform exploration with probability epsilon (as MABWiser's LinGreedy)."""
 
     base_name = "LinGreedy"
+    no_guarantee = "with a constant epsilon, the regret grows linearly"
     params = {"epsilon": ParamSpec("float", default=0.1, low=0.0, high=1.0, doc="Exploration probability.")}
     arbitrary_defaults = {"epsilon": "no theoretical value"}
     default_search_params = ("epsilon", "lambda_")

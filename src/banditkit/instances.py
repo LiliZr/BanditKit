@@ -14,13 +14,33 @@ from typing import List, Optional
 import numpy as np
 
 from ._validation import check_choice, check_float, check_int
-from .envs import BernoulliMAB, GaussianMAB, LinearEnv, MultiUserLinearEnv
+from .envs import BernoulliMAB, GaussianMAB, LinearEnv, MixtureMAB, MultiUserLinearEnv
 from .envs.base import Environment
 
 __all__ = ["sample_instances", "KINDS"]
 
-#: Kinds of instances: classical MAB with Bernoulli or Gaussian rewards, linear bandit, clustered users.
-KINDS = ("bernoulli", "gaussian", "linear", "multi_user")
+#: Kinds of instances: classical MAB with Bernoulli, Gaussian or mixed rewards, linear bandit, clustered users.
+KINDS = ("bernoulli", "gaussian", "mixed", "linear", "multi_user")
+
+
+def _random_mixture(rng: np.random.Generator) -> list:
+    """2 or 3 components of random families and parameters, random weights (see :class:`MixtureMAB`)."""
+    families = ("bernoulli", "beta", "uniform", "clipped_gaussian")
+    weights = rng.dirichlet(np.ones(int(rng.integers(2, 4))))
+    mixture = []
+    for w in weights:
+        family = families[int(rng.integers(len(families)))]
+        if family == "bernoulli":
+            params = (float(rng.uniform(0.0, 1.0)),)
+        elif family == "beta":
+            params = (float(rng.uniform(0.5, 5.0)), float(rng.uniform(0.5, 5.0)))
+        elif family == "uniform":
+            low = float(rng.uniform(0.0, 0.8))
+            params = (low, float(rng.uniform(low + 0.1, 1.0)))
+        else:
+            params = (float(rng.uniform(0.0, 1.0)), float(rng.uniform(0.05, 0.3)))
+        mixture.append((float(w), family, params))
+    return mixture
 
 _MAX_TRIES = 1000
 
@@ -45,9 +65,12 @@ def sample_instances(kind: str, n_instances: int, n_actions: int, n_features: Op
 
     Parameters
     ----------
-    kind : {"bernoulli", "gaussian", "linear", "multi_user"}
+    kind : {"bernoulli", "gaussian", "mixed", "linear", "multi_user"}
         ``"bernoulli"``: means uniform in ``mean_range``. ``"gaussian"``: same means,
-        Gaussian noise of std ``noise_std``. ``"linear"``: a new action set (uniform on
+        Gaussian noise of std ``noise_std``. ``"mixed"``: each action draws its reward
+        from a mixture of 2 or 3 random components (Bernoulli, Beta, uniform, Gaussian
+        clipped to [0, 1]): no single family fits it (:class:`MixtureMAB`; ``mean_range``
+        and ``noise_std`` do not apply). ``"linear"``: a new action set (uniform on
         the unit sphere) and a new theta (uniform direction, norm ``theta_norm``) per
         instance, Gaussian noise of std ``noise_std``. ``"multi_user"``: the same
         action set, plus ``n_clusters`` thetas shared by the ``n_users`` users
@@ -114,13 +137,19 @@ def sample_instances(kind: str, n_instances: int, n_actions: int, n_features: Op
                 X = _unit_rows(rng, n_actions, n_features)
                 theta = theta_norm * _unit_rows(rng, 1, n_features)[0]
                 means = X @ theta
+            elif kind == "mixed":
+                mixtures = [_random_mixture(rng) for _ in range(n_actions)]
+                mixed = MixtureMAB(mixtures)
+                means = mixed.mean_rewards(None)[:, 0]
             else:
                 means = rng.uniform(low, high, size=n_actions)
             if min_gap is None or _gap(means) >= min_gap:
                 break
         else:
             raise ValueError(f"No instance with a gap >= {min_gap} after {_MAX_TRIES} draws; lower `min_gap`.")
-        if kind == "bernoulli":
+        if kind == "mixed":
+            instances.append(mixed)
+        elif kind == "bernoulli":
             instances.append(BernoulliMAB(means))
         elif kind == "gaussian":
             instances.append(GaussianMAB(means, noise_std=noise_std))

@@ -2,8 +2,8 @@
 from .base import Environment
 from .factory import make_env
 from .linear import DynamicLinearEnv, LinearEnv
-from .mab import BernoulliMAB, EmpiricalMAB, GaussianMAB, GroupRecommendationMAB
+from .mab import BernoulliMAB, EmpiricalMAB, GaussianMAB, GroupRecommendationMAB, MixtureMAB
 from .multi_user import MultiUserLinearEnv
 
-__all__ = ["Environment", "make_env", "GaussianMAB", "BernoulliMAB", "EmpiricalMAB", "GroupRecommendationMAB",
+__all__ = ["Environment", "make_env", "GaussianMAB", "BernoulliMAB", "MixtureMAB", "EmpiricalMAB", "GroupRecommendationMAB",
            "LinearEnv", "DynamicLinearEnv", "MultiUserLinearEnv"]

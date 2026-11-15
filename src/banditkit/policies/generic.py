@@ -75,6 +75,14 @@ class GenericPolicy(Policy):
         return self.inner.techniques if self.inner is not None else ()
 
     @property
+    def missing_guarantee(self) -> Optional[str]:  # type: ignore[override]
+        return self.inner.missing_guarantee if self.inner is not None else None
+
+    @property
+    def radius_source(self) -> Optional[str]:  # type: ignore[override]
+        return self.inner.radius_source if self.inner is not None else None
+
+    @property
     def base_name(self) -> str:  # type: ignore[override]
         return self.inner.base_name if self.inner is not None else type(self).__name__
 

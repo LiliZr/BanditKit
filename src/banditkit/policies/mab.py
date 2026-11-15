@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
 import numpy as np
 
@@ -114,6 +114,14 @@ class EpsilonGreedy(MABPolicy):
 
     uses_reward_range = False
     default_search_params = ("epsilon",)
+    arbitrary_defaults = {"c": "the bound of Auer et al. (2002) needs c large enough, e.g. c > 5"}
+
+    def _unused_params(self) -> FrozenSet[str]:
+        return frozenset({"c", "d"}) if self.schedule == "constant" else frozenset({"epsilon"})
+
+    @property
+    def missing_guarantee(self) -> Optional[str]:
+        return "with a constant epsilon, the regret grows linearly" if self.schedule == "constant" else None
 
     def _check_params(self) -> None:
         if self.schedule == "auer" and self.d is None:
@@ -143,6 +151,7 @@ class Softmax(MABPolicy):
     base_name = "Softmax"
     params = {"tau": ParamSpec("float", default=0.1, low=0.0, low_inclusive=False, doc="Temperature (as in MABWiser).")}
     arbitrary_defaults = {"tau": "no theoretical value"}
+    no_guarantee = "with a constant temperature, the regret grows linearly"
     uses_reward_range = False
     default_search_params = ("tau",)
 
@@ -200,10 +209,12 @@ class UCB1Tuned(IndexPolicy):
     """UCB1-Tuned (Auer et al., 2002).
 
     Bonus ``alpha * b * sqrt((ln t / n) * min(1/4, V / b^2 + sqrt(2 ln t / n)))``
-    with V the empirical variance. For b = 1 this is the paper's index.
+    with V the empirical variance. For b = 1 this is the paper's index. The paper
+    proves no regret bound for it ("we are not able to prove a regret bound").
     """
 
     base_name = "UCB1Tuned"
+    no_guarantee = "Auer et al. (2002) prove none"
 
     def _bonus(self) -> np.ndarray:
         log_t, n, b = self._log_t(), self.counts, self.reward_amplitude
@@ -245,6 +256,7 @@ class UCBV(IndexPolicy):
     """
 
     base_name = "UCBV"
+    arbitrary_defaults = {"zeta": "any zeta > 1 keeps the bound of Theorem 4"}
     params = {
         "zeta": ParamSpec("float", default=1.2, low=0.0, low_inclusive=False, doc="Exploration constant zeta of E = zeta ln t."),
         "c": ParamSpec("float", default=1.0, low=0.0, low_inclusive=False, doc="Weight c of the range term 3 b E / n."),
@@ -263,15 +275,22 @@ class UCBV(IndexPolicy):
         return self.alpha * self._variance_bonus()
 
 
+RHO_REASON = "the proofs of Theorems 7 and 10 of Fan et al. need rho >= 3263; Proposition 1 needs rho > 1"
+
+
 class UCBV2(IndexPolicy):
     """Variance-aware UCB of Fan, Han, Lv, Xu and Zhou (NeurIPS 2025), called UCB-V2 here.
 
     Bonus ``alpha * max(sigma_hat sqrt(L / n), b L / n)`` with ``L = rho ln T`` and
     sigma_hat the empirical standard deviation. For b = 1 this is the paper's
-    index; its guarantees assume rho > 1. Needs the horizon T.
+    index. Needs the horizon T. In the NeurIPS 2025 version, Proposition 1 needs
+    rho > 1 and the regret Theorems 7 and 10 need rho >= C0, a constant with
+    sqrt(96 C0) + 256 <= C0 / 4 in the proof, so C0 >= 3263. The default rho = 2
+    is the value of the experiments of the latest arXiv version (2026).
     """
 
     base_name = "UCBV2"
+    arbitrary_defaults = {"rho": RHO_REASON}
     params = {"rho": ParamSpec("float", default=2.0, low=0.0, low_inclusive=False, doc="Exploration constant rho of L = rho ln T.")}
 
     def _check_params(self) -> None:
@@ -308,6 +327,11 @@ class UCBMin(IndexPolicy):
         "c": UCBV.params["c"],
         "rho": UCBV2.params["rho"],
     }
+
+    arbitrary_defaults = {"rho": RHO_REASON, "zeta": UCBV.arbitrary_defaults["zeta"]}
+
+    def _unused_params(self) -> FrozenSet[str]:
+        return frozenset({"rho"}) if self.variant == "v1" else frozenset({"zeta", "c"})
 
     def _check_spec(self, spec: EnvSpec) -> None:
         if self.variant == "v2":
