@@ -16,7 +16,7 @@ Each paper uses its own Frequent Directions variant:
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -141,7 +141,7 @@ class SOFUL(SketchPolicy):
 
     base_name = "SOFUL"
 
-    def _beta(self, n_obs: int) -> float:
+    def _beta(self, n_obs: int, logdet: Optional[float] = None) -> float:
         m, k, lam = self.sketch_size, self.dim, self.lambda_
         ratio = self.sketch_error / lam
         inner = (m * math.log(1.0 + n_obs * self._L ** 2 / (m * lam)) + 2.0 * math.log(1.0 / self.delta)
@@ -167,7 +167,7 @@ class CBSCFD(SketchPolicy):
     adaptive_regularization = True
     fd_variant = "fast"
 
-    def _beta(self, n_obs: int) -> float:
+    def _beta(self, n_obs: int, logdet: Optional[float] = None) -> float:
         m, k, lam, err = self.sketch_size, self.dim, self.lambda_, self.sketch_error
         inner = (2.0 * math.log(1.0 / self.delta) + m * math.log(1.0 + n_obs * self._L ** 2 / (m * lam))
                  + k * math.log(1.0 + err / lam))

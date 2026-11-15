@@ -149,7 +149,7 @@ def _linear_state(policy: Policy) -> Dict[str, Any]:
     if not models or getattr(inner, "user_model", None) != "shared" or inner.dim > 3 or 0 not in models:
         return {}
     model = models[0]
-    return {"theta": model.theta.copy(), "V_inv": model.V_inv.copy(), "width_scale": inner.alpha * inner._beta(model.n_obs)}
+    return {"theta": model.theta.copy(), "V_inv": model.V_inv.copy(), "width_scale": inner.alpha * inner._beta(model.n_obs, getattr(model, "logdet", None))}
 
 
 def _bucket_state(policy: Policy) -> Dict[str, Any]:

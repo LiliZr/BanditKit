@@ -90,7 +90,7 @@ class ClusteringPolicy(BucketedPolicy):
         target.refresh_from_V()
 
     def _width_scale(self, cluster: RidgeModel) -> float:
-        return self.alpha * self._beta(cluster.n_obs)
+        return self.alpha * self._beta(cluster.n_obs, cluster.logdet)
 
 
 class CLUB(ClusteringPolicy):

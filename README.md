@@ -170,6 +170,7 @@ what is not stored.
 | `n_components`, `projection` | random projection to k dimensions (`"gaussian"` or `"fjlt"`) |
 | `sketch_size` | size of the Frequent Directions sketch (SOFUL, CBSCFD) |
 | `user_model` | multi-user LinUCB: `"shared"`, `"individual"` or `"kmeans"` |
+| `switch_factor` | LinUCB only: rarely switching OFUL (Abbasi-Yadkori et al., 2011), the optimistic estimate is recomputed only when det(V) grows by 1 + `switch_factor` (None: every step) |
 | `subgaussian`, `theta_bound`, `reward_range` | noise level R, norm S of theta, reward range b; read from the environment when it knows them |
 
 **Arm buckets and k-means users.** Two speed-ups of linear policies, without regret guarantee
@@ -238,7 +239,7 @@ The same arrays saved in an `.npz` file load with `datasets.load_npz(path)` (key
 | Any (resolved from the problem) | `UCB`, `ThompsonSampling`, `EpsilonGreedy`, `Random` |
 | MAB, multi-objective MAB (scalarized) | `UCB1`, `UCB1Tuned`, `UCB1Normal`, `MABEpsilonGreedy` [Auer et al.]; `UCBV` [Audibert et al.]; `UCBV2` [Fan et al.]; `EUCBV` [Mukherjee et al.]; `UCBMinV1`, `UCBMinV2` [Izri et al., 2026]; `KLUCB` [Garivier and Cappé]; `BernoulliThompsonSampling` [Thompson; Agrawal and Goyal, 2012]; `GaussianThompsonSampling` [Agrawal and Goyal, 2013b]; `Softmax` [Sutton and Barto] |
 | Multi-objective MAB (Pareto) | `ParetoUCB1` [Drugan and Nowé] |
-| Linear | `LinUCB` [Li et al., 2010; radius of Abbasi-Yadkori et al.]; `ConfidenceBall1` [Dani et al.]; `LinTS` [Agrawal and Goyal, 2013a]; `CBRAP` [Yu et al.]; `SOFUL` [Kuzborskij et al.]; `CBSCFD` [Chen et al.]; `LinGreedy`; random projections of LinUCB and ConfidenceBall1 [Izri et al., 2025; FJLT: Ailon and Chazelle] |
+| Linear | `LinUCB` [Li et al., 2010; radius and rarely switching variant of Abbasi-Yadkori et al.]; `ConfidenceBall1` [Dani et al.]; `LinTS` [Agrawal and Goyal, 2013a]; `CBRAP` [Yu et al.]; `SOFUL` [Kuzborskij et al.]; `CBSCFD` [Chen et al.]; `LinGreedy`; random projections of LinUCB and ConfidenceBall1 [Izri et al., 2025; FJLT: Ailon and Chazelle] |
 | Multi-user linear | `LinUCB(user_model=...)`, `CLUB` [Gentile et al.], `SCLUB` [Li et al., 2019] |
 
 ## Tests

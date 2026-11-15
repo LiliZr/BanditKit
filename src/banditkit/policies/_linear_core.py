@@ -27,11 +27,13 @@ class RidgeModel:
     b : (dim,) ``sum reward * x``.
     theta : (dim,) ridge estimate ``V^-1 b``.
     n_obs : number of observations.
+    logdet : ``log det(V) - dim log(lambda)``, updated in O(dim) by the matrix determinant lemma.
     buckets : optional :class:`ActionBuckets` attached to this model.
     buckets_on : the action features the buckets were built on (rebuilt when the action set changes).
     """
 
-    __slots__ = ("V_inv", "V", "b", "theta", "n_obs", "buckets", "buckets_on", "steps_since_rebucket")
+    __slots__ = ("V_inv", "V", "b", "theta", "n_obs", "logdet", "lambda_", "buckets", "buckets_on",
+                 "steps_since_rebucket", "switch")
 
     def __init__(self, dim: int, lambda_: float, dtype=np.float64, keep_V: bool = False) -> None:
         self.V_inv = np.eye(dim, dtype=dtype) / lambda_
@@ -39,13 +41,16 @@ class RidgeModel:
         self.b = np.zeros(dim, dtype=dtype)
         self.theta = np.zeros(dim, dtype=dtype)
         self.n_obs = 0
+        self.logdet = 0.0
+        self.lambda_ = lambda_
+        self.switch = None  # rarely switching OFUL: (optimistic theta, logdet when it was computed)
         self.buckets: Optional[ActionBuckets] = None
         self.buckets_on: Optional[np.ndarray] = None
         self.steps_since_rebucket = 0
 
     def update(self, x: np.ndarray, reward: float) -> None:
         """Add one observation (features x, scalar reward). O(dim^2) with Sherman-Morrison."""
-        sherman_morrison_(self.V_inv, x)
+        self.logdet += math.log1p(sherman_morrison_(self.V_inv, x))
         if self.V is not None:
             self.V += np.multiply.outer(x, x)
         self.b += reward * x
@@ -57,6 +62,7 @@ class RidgeModel:
         """Recompute ``V_inv`` and ``theta`` after ``V`` and ``b`` changed in bulk (cluster merge or split)."""
         self.V_inv = np.linalg.inv(self.V).astype(self.b.dtype, copy=False)
         np.dot(self.V_inv, self.b, out=self.theta)
+        self.logdet = float(np.linalg.slogdet(self.V.astype(np.float64))[1]) - self.V.shape[0] * math.log(self.lambda_)
 
 
 class ActionBuckets:

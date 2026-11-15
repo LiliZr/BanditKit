@@ -32,11 +32,16 @@ def argmax_random(values: np.ndarray, rng: np.random.Generator) -> int:
     return int(candidates[rng.integers(candidates.size)])
 
 
-def sherman_morrison_(inv: np.ndarray, x: np.ndarray) -> None:
-    """In place update ``inv <- (inv^{-1} + x x^T)^{-1}``."""
+def sherman_morrison_(inv: np.ndarray, x: np.ndarray) -> float:
+    """In place update ``inv <- (inv^{-1} + x x^T)^{-1}``.
+
+    Returns ``x^T inv x`` before the update: ``log det`` of the matrix grows by ``log(1 + x^T inv x)``
+    (matrix determinant lemma).
+    """
     vx = inv @ x
-    denom = 1.0 + float(x @ vx)
-    inv -= np.multiply.outer(vx, vx) / denom
+    q = float(x @ vx)
+    inv -= np.multiply.outer(vx, vx) / (1.0 + q)
+    return q
 
 
 def pareto_front(points: np.ndarray) -> np.ndarray:

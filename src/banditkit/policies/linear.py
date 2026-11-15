@@ -21,12 +21,17 @@ __all__ = ["LinUCB", "CBRAP", "ConfidenceBall1", "LinTS", "LinGreedy"]
 class LinearPolicy(Policy):
     """Shared machinery: working features (projected or not) and the OFUL confidence radius.
 
-    The radius is Theorem 2 of Abbasi-Yadkori et al. (2011) in the working dimension k
-    (n_features, or n_components after projection), after n observations::
+    The radius is the confidence set of Theorem 2 of Abbasi-Yadkori et al. (2011), used by
+    OFUL (their Figure 1), in the working dimension k (n_features, or n_components after
+    projection)::
 
-        beta(n) = R sqrt(2 ln(1/delta) + k ln(1 + n L^2 / (lambda k))) + sqrt(lambda) S
+        beta = R sqrt(2 ln(det(V)^1/2 det(lambda I)^-1/2 / delta)) + sqrt(lambda) S
 
-    The UCB of features x is ``x . theta + alpha * beta(n) * ||x||_{V^-1}``.
+    ``log det(V)`` is updated in O(k) per observation with the matrix determinant lemma,
+    as the paper suggests. Where no model is at hand, the determinant is bounded by
+    ``(lambda + n L^2 / k)^k``, which gives ``R sqrt(2 ln(1/delta) + k ln(1 + n L^2 / (lambda k))) + sqrt(lambda) S``.
+
+    The UCB of features x is ``x . theta + alpha * beta * ||x||_{V^-1}``.
     """
 
     families = frozenset({"linear", "multi_user"})
@@ -120,9 +125,12 @@ class LinearPolicy(Policy):
             self._raw_features, self._features, self._L = entry
         return self._features
 
-    def _beta(self, n_obs: int) -> float:
+    def _beta(self, n_obs: int, logdet: Optional[float] = None) -> float:
+        """OFUL radius; ``logdet`` is ``log det(V) - k log(lambda)`` of the model (None: its upper bound)."""
         k, lam = self.dim, self.lambda_
-        inner = 2.0 * math.log(1.0 / self.delta) + k * math.log(1.0 + n_obs * self._L ** 2 / (lam * k))
+        if logdet is None:
+            logdet = k * math.log(1.0 + n_obs * self._L ** 2 / (lam * k))
+        inner = 2.0 * math.log(1.0 / self.delta) + max(logdet, 0.0)
         return self._R * math.sqrt(inner) + math.sqrt(lam) * self._S
 
 
@@ -221,6 +229,10 @@ class LinUCB(BucketedPolicy):
         "n_user_clusters": ParamSpec("int", default=None, low=1, allow_none=True,
                                      doc="Number of k-means user clusters (user_model='kmeans' only)."),
         "user_recluster_freq": ParamSpec("int", default=2000, low=1, doc="Steps between two k-means of the users."),
+        "switch_factor": ParamSpec("float", default=None, low=0.0, low_inclusive=False, allow_none=True,
+                                   doc="Rarely switching OFUL (Abbasi-Yadkori et al., 2011, Figure 3): recompute "
+                                       "the optimistic estimate only when det(V) grows by 1 + switch_factor "
+                                       "(None: at every step)."),
     }
 
     def _check_params(self) -> None:
@@ -230,7 +242,7 @@ class LinUCB(BucketedPolicy):
 
     @property
     def techniques(self) -> Tuple[str, ...]:
-        t = super().techniques
+        t = super().techniques + (("RS",) if self.switch_factor is not None else ())
         if self.user_model == "individual":
             return ("IND",) + t
         if self.user_model == "kmeans":
@@ -275,16 +287,31 @@ class LinUCB(BucketedPolicy):
         weight = n_user / (n_user + n_cluster)
         return weight * model.theta + (1.0 - weight) * self._centroids[cluster]
 
+    def _width_scale_of(self, model: RidgeModel) -> float:
+        return self.alpha * self._beta(model.n_obs, model.logdet)
+
     def _predict(self, obs: Observation) -> int:
         X = self._working_features(obs)
         model = self._model(obs, X)
-        return self._ucb_action(X, model, self._estimate(obs.user_id, model), self.alpha * self._beta(model.n_obs))
+        theta = self._estimate(obs.user_id, model)
+        if self.switch_factor is None:
+            return self._ucb_action(X, model, theta, self._width_scale_of(model))
+        # Rarely switching OFUL: the optimistic estimate of the last switch stays until det(V)
+        # has grown by 1 + switch_factor; in between, the policy is greedy for it (Figure 3).
+        if model.switch is None or model.logdet > model.switch[1] + math.log1p(self.switch_factor):
+            scale = self._width_scale_of(model)
+            best = self._ucb_action(X, model, theta, scale)
+            vx = model.V_inv @ X[best]
+            width = math.sqrt(max(float(X[best] @ vx), 1e-300))
+            model.switch = (theta + scale * vx / width, model.logdet)  # the maximizer of x* . theta over C
+            return best
+        return argmax_random(X @ model.switch[0], self.rng)
 
     def _update(self, obs: Observation, action: int, reward: np.ndarray, scalar_reward: float) -> None:
         X = self._working_features(obs)
         model = self._model(obs, X)
         model.update(X[action], scalar_reward)
-        self._rebuild_buckets_if_due(model, X, self.alpha * self._beta(model.n_obs))
+        self._rebuild_buckets_if_due(model, X, self._width_scale_of(model))
         self._n_updates += 1
         if (self.user_model == "kmeans" and self._n_updates % self.user_recluster_freq == 0
                 and len(self.models) >= self.n_user_clusters):
@@ -356,7 +383,7 @@ class CBRAP(LinUCB):
     def radius_source(self) -> Optional[str]:
         return None  # Lemma 1 of its own paper
 
-    def _beta(self, n_obs: int) -> float:
+    def _beta(self, n_obs: int, logdet: Optional[float] = None) -> float:
         m, lam = self.dim, self.lambda_
         inner = m * math.log((1.0 + n_obs * self._L ** 2 / lam) / self.delta)
         return (math.sqrt(4.0 / m) + self._R) * math.sqrt(inner) + math.sqrt(lam) * self._S
@@ -397,7 +424,7 @@ class ConfidenceBall1(SingleModelPolicy):
         eigval, eigvec = np.linalg.eigh(self.model.V_inv)
         V_inv_sqrt = (eigvec * np.sqrt(np.clip(eigval, 0.0, None))) @ eigvec.T
         width = np.abs(X @ V_inv_sqrt).max(axis=1)
-        return argmax_random(X @ self.model.theta + self.alpha * math.sqrt(self.dim) * self._beta(self.model.n_obs) * width,
+        return argmax_random(X @ self.model.theta + self.alpha * math.sqrt(self.dim) * self._beta(self.model.n_obs, self.model.logdet) * width,
                              self.rng)
 
 

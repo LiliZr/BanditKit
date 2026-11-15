@@ -307,3 +307,32 @@ def test_cbscfd_sketch_starts_with_m_zero_rows():
             assert p.sketch_error == 0.0 and p.sketch.shape[0] == 3
         if step == 4:
             assert p.sketch_error > 0.0 and p.sketch.shape[0] == 3   # shrink: m - 1 rows left
+
+
+def test_oful_radius_uses_log_det_and_rarely_switching():
+    rng = np.random.default_rng(1)
+    X = rng.standard_normal((40, 5))
+    X /= np.linalg.norm(X, axis=1, keepdims=True)
+    env = bk.make_env(action_features=X, theta=rng.standard_normal(5) / 3, noise_std=0.1)
+    p = bk.LinUCB(lambda_=1.0)
+    p.reset(env.spec, seed=0)
+    env.reset(seed=0)
+    obs = env._observation(0)
+    for _ in range(30):
+        a = p.predict(obs)
+        p.update(obs, a, env.mean_reward(a, obs))
+    model = p.models[0]
+    V = np.linalg.inv(model.V_inv)
+    assert model.logdet == pytest.approx(np.linalg.slogdet(V)[1], rel=1e-6)
+    # The determinant radius is never wider than its bound with det(V) <= (lambda + n L^2 / d)^d.
+    assert p._beta(model.n_obs, model.logdet) <= p._beta(model.n_obs) + 1e-9
+    q = bk.LinUCB(switch_factor=1.0)
+    assert q.label == "LinUCB_RS" and q.missing_guarantee is None
+    q.reset(env.spec, seed=0)
+    switches = 0
+    for _ in range(200):
+        before = q.models[0].switch if q.models else None
+        a = q.predict(obs)
+        q.update(obs, a, env.mean_reward(a, obs))
+        switches += q.models[0].switch is not before
+    assert 2 <= switches < 60  # O(d log n) switches, not one per step
