@@ -170,6 +170,7 @@ what is not stored.
 | `n_components`, `projection` | random projection to k dimensions (`"gaussian"` or `"fjlt"`) |
 | `sketch_size` | size of the Frequent Directions sketch (SOFUL, CBSCFD) |
 | `user_model` | multi-user LinUCB: `"shared"`, `"individual"` or `"kmeans"` |
+| `radius` | LinUCB only: `"oful"` (default) or `"li2010"`, the alpha = 1 + sqrt(ln(2/delta)/2) of Li et al. (2010), which assumes independent rewards (their Algorithm 1 also uses `lambda_=1`) |
 | `switch_factor` | LinUCB only: rarely switching OFUL (Abbasi-Yadkori et al., 2011), the optimistic estimate is recomputed only when det(V) grows by 1 + `switch_factor` (None: every step) |
 | `subgaussian`, `theta_bound`, `reward_range` | noise level R, norm S of theta, reward range b; read from the environment when it knows them |
 

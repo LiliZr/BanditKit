@@ -469,12 +469,19 @@ class Experiment:
                 source = self.policies[label].radius_source
                 if source and "alpha" in p:
                     sources.setdefault(source, []).append(label)
+            notes: Dict[str, List[str]] = {}
             for source, labels in sources.items():
-                used += f" {_list(labels)} {_verb(labels, t('uses', 'used'), use)} {source}."
+                used += f" {_list(labels)} {_verb(labels, t('uses', 'used'), use)} {source} by default."
                 for label in labels:
                     note = getattr(self.policies[label], "radius_note", None)
                     if note:
-                        used += f" For {label}, it is {note}."
+                        notes.setdefault(note, []).append(label)
+            oful = [label for labels in sources.values() for label in labels]
+            for note, labels in notes.items():
+                skip = t(_verb(labels, "does not use", "do not use"), "did not use")
+                # the same policies as the sentence before: a pronoun instead of the list again
+                subject = _verb(labels, "It", "They") if len(sources) == 1 and labels == oful else _list(labels)
+                used += " " + note.format(labels=_list(labels), subject=subject, skip=skip)
             unsafe = [label for label in defaults if self.policies[label].missing_guarantee]
             if not unsafe:
                 safe = "These values are safe in theory."
@@ -486,8 +493,11 @@ class Experiment:
             add("defaults", "Default hyperparameters",
                 f"{used} {safe} In practice, they often **explore too much**. "
                 "The regret can then be higher than with tuned values.",
-                "The values from the papers (param_grid=None).",
-                f"Search the best values with param_grid=True. Or set them yourself, e.g. {example}.")
+                "The values from the papers (param_grid=None)."
+                + (f" The OFUL radius for {_list(oful)}." if oful else ""),
+                f"Search the best values with param_grid=True. Or set them yourself, e.g. {example}."
+                + (' For the LinUCB of Li et al. (2010): LinUCB(radius="li2010", lambda_=1).' if notes and any(
+                    "Li et al." in note for note in notes) else ""))
         if searched:
             n = sum(int(np.prod([len(v) for v in grids[label].values()])) for label in searched)
             runs = f"{self.search_runs} run" + ("s" if self.search_runs > 1 else "")

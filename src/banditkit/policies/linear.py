@@ -229,6 +229,10 @@ class LinUCB(BucketedPolicy):
         "n_user_clusters": ParamSpec("int", default=None, low=1, allow_none=True,
                                      doc="Number of k-means user clusters (user_model='kmeans' only)."),
         "user_recluster_freq": ParamSpec("int", default=2000, low=1, doc="Steps between two k-means of the users."),
+        "radius": ParamSpec("choice", default="oful", choices=("oful", "li2010"),
+                            doc="'oful': confidence radius of OFUL (valid for adaptive choices); 'li2010': "
+                                "alpha (1 + sqrt(ln(2/delta)/2)) of Li et al. (2010), which assumes independent rewards. "
+                                "Their Algorithm 1 starts from A = I: set lambda_=1 too."),
         "switch_factor": ParamSpec("float", default=None, low=0.0, low_inclusive=False, allow_none=True,
                                    doc="Rarely switching OFUL (Abbasi-Yadkori et al., 2011, Figure 3): recompute "
                                        "the optimistic estimate only when det(V) grows by 1 + switch_factor "
@@ -258,11 +262,21 @@ class LinUCB(BucketedPolicy):
     def missing_guarantee(self) -> Optional[str]:
         if self.user_model == "kmeans":
             return "k-means users are a heuristic"
+        if self.radius == "li2010":
+            return "the radius of Li et al. (2010) assumes independent rewards, which adaptive choices break"
         return super().missing_guarantee
 
     @property
     def radius_source(self) -> Optional[str]:
-        return OFUL_RADIUS
+        return OFUL_RADIUS if self.radius == "oful" else None
+
+    @property
+    def radius_note(self) -> Optional[str]:
+        """Shown in the warning after the source of the radius ({labels}, {subject} and {skip} are filled in)."""
+        if self.radius != "oful":
+            return None
+        return ("{subject} {skip} the radius of Li et al. (2010), 1 + sqrt(ln(2/delta)/2): "
+                "it assumes independent rewards, which adaptive choices break.")
 
     def _reset(self) -> None:
         super()._reset()
@@ -288,6 +302,8 @@ class LinUCB(BucketedPolicy):
         return weight * model.theta + (1.0 - weight) * self._centroids[cluster]
 
     def _width_scale_of(self, model: RidgeModel) -> float:
+        if self.radius == "li2010":  # Eq. 4 of Li et al. (2010)
+            return self.alpha * (1.0 + math.sqrt(math.log(2.0 / self.delta) / 2.0))
         return self.alpha * self._beta(model.n_obs, model.logdet)
 
     def _predict(self, obs: Observation) -> int:
@@ -363,7 +379,8 @@ class CBRAP(LinUCB):
 
     base_name = "CBRAP"
     no_guarantee = "its erratum (arXiv:1903.08600) gives a regret bound with a term linear in T"
-    params = {"projection": ParamSpec("choice", default="gaussian", choices=("gaussian",), doc="Fixed to 'gaussian'.")}
+    params = {"projection": ParamSpec("choice", default="gaussian", choices=("gaussian",), doc="Fixed to 'gaussian'."),
+              "radius": ParamSpec("choice", default="lemma1", choices=("lemma1",), doc="Fixed: Lemma 1 of the CBRAP paper.")}
 
     def _check_params(self) -> None:
         super()._check_params()
@@ -382,6 +399,10 @@ class CBRAP(LinUCB):
     @property
     def radius_source(self) -> Optional[str]:
         return None  # Lemma 1 of its own paper
+
+    @property
+    def radius_note(self) -> Optional[str]:
+        return None
 
     def _beta(self, n_obs: int, logdet: Optional[float] = None) -> float:
         m, lam = self.dim, self.lambda_
@@ -412,8 +433,8 @@ class ConfidenceBall1(SingleModelPolicy):
 
     base_name = "ConfidenceBall1"
 
-    #: Shown in the warning after the source of the radius.
-    radius_note = "much tighter than the radius of its paper (Dani et al., 2008)"
+    #: Shown in the warning after the source of the radius ({labels} is filled in).
+    radius_note = "For {labels}, the OFUL radius is much tighter than the radius of Dani et al. (2008)."
 
     @property
     def radius_source(self) -> Optional[str]:

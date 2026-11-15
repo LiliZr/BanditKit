@@ -336,3 +336,14 @@ def test_oful_radius_uses_log_det_and_rarely_switching():
         q.update(obs, a, env.mean_reward(a, obs))
         switches += q.models[0].switch is not before
     assert 2 <= switches < 60  # O(d log n) switches, not one per step
+
+
+def test_linucb_radius_of_li_et_al_is_an_option():
+    env = bk.make_env(action_features=np.eye(4), theta=[0.3, 0.1, 0.0, 0.2], noise_std=0.1)
+    p = bk.LinUCB(radius="li2010", delta=0.05)
+    p.reset(env.spec, seed=0)
+    assert p._width_scale_of(p._new_model(np.eye(4))) == pytest.approx(1 + math.sqrt(math.log(2 / 0.05) / 2))
+    assert "independent rewards" in p.missing_guarantee and p.radius_source is None
+    assert bk.LinUCB().radius == "oful" and bk.LinUCB().missing_guarantee is None
+    with pytest.raises(ValueError):
+        bk.CBRAP(n_components=2, radius="oful")

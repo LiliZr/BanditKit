@@ -282,7 +282,8 @@ def test_guarantees_and_values_with_no_theory_in_the_warning():
     env = bk.make_env(action_features=np.eye(4), theta=[0.3, 0.4, 0.0, 0.1], noise_std=0.2)
     exp = bk.Experiment(env, [bk.LinUCB(), bk.ConfidenceBall1(), bk.CBRAP(n_components=2)], horizon=5, verbose=0)
     notices = {n["key"]: n["text"] for n in exp.notices()}
-    assert "**OFUL radius**" in notices["defaults"] and "Dani et al., 2008" in notices["defaults"]
+    assert "**OFUL radius**" in notices["defaults"] and "Dani et al. (2008)" in notices["defaults"]
+    assert "Li et al. (2010)" in notices["defaults"]
     assert "except for CBRAP" in notices["defaults"] and "CBRAP has **no proven regret bound**" in notices["guarantee"]
     assert "delta=0.01" in notices["arbitrary"] and "lambda_=0.1" in notices["arbitrary"]
     assert bk.Experiment(mab, [bk.UCB1()], horizon=5, verbose=0).notices()[0]["text"].count("safe in theory.") == 1
