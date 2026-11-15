@@ -61,13 +61,13 @@ def compute(n_jobs: int):
 
     # Parameter search (alpha x lambda_, default grid) next to the theoretical bounds.
     small = linear_instances(5, K=500, d=10, noise_std=0.1, seed=1)
-    policies = {"LinUCB": bk.LinUCB(), "LinUCB searched": bk.LinUCB(), "LinTS": bk.LinTS(), "LinTS searched": bk.LinTS()}
+    policies = {"LinUCB": bk.LinUCB(), "LinUCB-searched": bk.LinUCB(), "LinTS": bk.LinTS(), "LinTS-searched": bk.LinTS()}
     grid = {"alpha": bk.DEFAULT_PARAM_GRID["alpha"], "lambda_": bk.DEFAULT_PARAM_GRID["lambda_"]}
     res_s = bk.Experiment(small, policies, horizon=2000, n_runs=4, seed=1, search_runs=2,
-                          param_grid={"LinUCB searched": grid, "LinTS searched": grid}, **run).run()
-    dashed = {label: {"linestyle": "--", "filled": False} for label in ("LinUCB searched", "LinTS searched")}
+                          param_grid={"LinUCB-searched": grid, "LinTS-searched": grid}, **run).run()
+    dashed = {label: {"linestyle": "--", "filled": False} for label in ("LinUCB-searched", "LinTS-searched")}
     pub["search"] = png(plot.curves(res_s, band="ci95", overrides=dashed)[0])
-    pub["landscape"] = png(plot.search_landscape(res_s, "LinUCB searched")[0])
+    pub["landscape"] = png(plot.search_landscape(res_s, "LinUCB-searched")[0])
 
     # Buckets as the catalog grows: 5 instances x 2 runs per size.
     by_K = {K: bk.Experiment(linear_instances(5, K=K, d=20, noise_std=0.1, seed=K), [bk.LinUCB(), bk.LinUCB(n_buckets="sqrt")],
