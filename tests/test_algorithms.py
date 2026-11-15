@@ -289,3 +289,21 @@ def test_sclub_theoretical_threshold():
     obs, _ = env.reset(seed=0)
     p.predict(obs)
     assert math.isclose(p._alpha_theta, 4 * 0.3 * math.sqrt(4 / 1.0))
+
+
+def test_cbscfd_sketch_starts_with_m_zero_rows():
+    # Algorithm 1 of Chen et al. (2020): Z_0 = 0_{m x d}, so the first shrink comes after m rows.
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((30, 8))
+    env = bk.make_env(action_features=X, theta=rng.standard_normal(8) / 3, noise_std=0.1)
+    p = bk.CBSCFD(sketch_size=4)
+    p.reset(env.spec, seed=0)
+    env.reset(seed=0)
+    obs = env._observation(0)
+    for step in range(1, 6):
+        a = p.predict(obs)
+        p.update(obs, a, env.mean_reward(a, obs))
+        if step == 3:
+            assert p.sketch_error == 0.0 and p.sketch.shape[0] == 3
+        if step == 4:
+            assert p.sketch_error > 0.0 and p.sketch.shape[0] == 3   # shrink: m - 1 rows left

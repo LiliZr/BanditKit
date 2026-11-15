@@ -8,8 +8,10 @@ Each paper uses its own Frequent Directions variant:
 * SOFUL: the sketch has m rows. At every step x is added, an SVD shrinks every
   squared singular value by ``delta = sigma_m^2`` (the m-th one), and m - 1
   non-zero rows remain.
-* CBSCFD: rows are appended until the buffer holds 2m rows; only then the SVD
-  shrinks by ``delta = sigma_m^2``, which leaves m - 1 non-zero rows.
+* CBSCFD: the sketch starts as m zero rows (Z_0 = 0_{m x d}, Algorithm 1 of the
+  paper). Rows are appended until the buffer holds 2m rows; only then the SVD
+  shrinks by ``delta = sigma_m^2``, which leaves m - 1 non-zero rows. So the first
+  shrink comes after m rows, the next ones after m + 1.
 """
 from __future__ import annotations
 
@@ -56,6 +58,8 @@ class SketchPolicy(LinearPolicy):
         self.sketch_error = 0.0                  # sum of the shrinkages delta (rho in SOFUL, Delta in CBSCFD)
         self.n_obs = 0
         self._sq_norms = None
+        # Zero rows the sketch starts with: m for SCFD (Z_0 = 0_{m x d}); they count in the 2m buffer.
+        self._zero_rows = self.sketch_size if self.fd_variant == "fast" else 0
 
     @property
     def regularization(self) -> float:
@@ -86,10 +90,11 @@ class SketchPolicy(LinearPolicy):
         self.b += scalar_reward * x
         if self.fd_variant == "standard":
             self._shrink(np.vstack([self.sketch, x]))
-        elif self.sketch.shape[0] + 1 < 2 * self.sketch_size:
+        elif self.sketch.shape[0] + self._zero_rows + 1 < 2 * self.sketch_size:
             self._append_row(x)
-        else:
+        else:  # zero rows do not change the singular values: shrink the non-zero rows only
             self._shrink(np.vstack([self.sketch, x]))
+            self._zero_rows = 0
         S, c = self.sketch, self.regularization
         self.theta = (self.b - S.T @ (self.gram_inv @ (S @ self.b))) / c
         self.n_obs += 1

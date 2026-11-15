@@ -462,7 +462,7 @@ class KLUCB(IndexPolicy):
         action = self._unpulled_action()
         if action is not None:
             return action
-        log_t = self._log_t()
+        log_t = self._log_round()  # log t, t the current round (Algorithm 1 of the paper)
         level = (log_t + self.c * math.log(max(log_t, 1.0))) / self.counts
         p = np.clip(self.means / self.reward_amplitude, 0.0, 1.0)
         low, high = p.copy(), np.ones_like(p)

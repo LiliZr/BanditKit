@@ -98,7 +98,8 @@ class CLUB(ClusteringPolicy):
 
     Users are the nodes of a graph and clusters are its connected components.
     After an update of user i, the edge (i, j) is deleted when
-    ``||theta_i - theta_j|| > cluster_alpha * (F(T_i) + F(T_j))``, F = :func:`confidence_term`.
+    ``||theta_i - theta_j|| > cluster_alpha * (F(T_i) + F(T_j))``, F = :func:`confidence_term`,
+    with the estimates and counts before the update (round t - 1, as in Figure 1).
 
     ``bonus="paper"`` uses the width ``alpha * sqrt(x^T M^-1 x * ln(t + 1))`` of the
     paper's Figure 1. The paper tunes alpha and alpha_2 on the first rounds of each
@@ -207,21 +208,23 @@ class CLUB(ClusteringPolicy):
     def _update(self, obs: Observation, action: int, reward: np.ndarray, scalar_reward: float) -> None:
         X = self._working_features(obs)
         u, x = obs.user_id, X[action]
+        # Figure 1 of the paper deletes edges with the estimates and counts of round t - 1.
+        theta_before, n_before = self._user_theta(u).copy(), self._user_n_obs(u)
         self._user_model(u).update(x, scalar_reward)
         cluster = self._cluster_model(u, X)
         cluster.update(x, scalar_reward)
         self._n_updates += 1
         self._rebuild_buckets_if_due(cluster, X, self._width_scale(cluster))
-        self._delete_far_edges(u, X)
+        self._delete_far_edges(u, X, theta_before, n_before)
 
-    def _delete_far_edges(self, u: int, X: np.ndarray) -> None:
+    def _delete_far_edges(self, u: int, X: np.ndarray, theta_u: np.ndarray, n_u: int) -> None:
         neighbors = list(self.neighbors[u])
         if not neighbors:
             return
         thetas = np.stack([self._user_theta(v) for v in neighbors])
-        thresholds = self.cluster_alpha * (confidence_term(self._user_n_obs(u))
+        thresholds = self.cluster_alpha * (confidence_term(n_u)
                                            + np.array([confidence_term(self._user_n_obs(v)) for v in neighbors]))
-        far = np.linalg.norm(thetas - self._user_theta(u), axis=1) > thresholds
+        far = np.linalg.norm(thetas - theta_u, axis=1) > thresholds
         if not far.any():
             return
         for v in np.asarray(neighbors)[far].tolist():
@@ -250,9 +253,12 @@ class SCLUB(ClusteringPolicy):
     * split i out of j if ``||theta_i - pivot_j|| > cluster_alpha (F(T_i) + F(T_pivot))``,
       or (``use_frequency``) if its frequency ``T_i / t`` differs from another
       member's by more than ``2 freq_alpha F(t)``;
-    * mark i as checked; once all users of j are checked, merge j with any checked
-      cluster j' such that ``||theta_j - theta_j'|| < cluster_alpha / 2 (F(T_j) + F(T_j'))``
+    * mark i as checked; then merge any two checked clusters j < j' (all their users
+      checked) such that ``||theta_j - theta_j'|| < cluster_alpha / 2 (F(T_j) + F(T_j'))``
       and (``use_frequency``) ``|p_j - p_j'| < freq_alpha F(t)``, with ``p_j = T_j / (|C_j| t)``.
+
+    A user alone in its cluster is never split out (it would leave an empty cluster). A new
+    cluster takes the estimate and count of its user as pivot until the next phase.
 
     ``split_merge_freq > 1`` runs these tests every that many steps only (faster;
     not in the paper). ``bonus="paper"`` uses Theorem 1's radius
@@ -369,8 +375,8 @@ class SCLUB(ClusteringPolicy):
         if not self._checked[u]:
             self._checked[u] = True
             self._n_checked[j] += 1
-        if test_now and self._n_checked[j] == len(self.members[j]):
-            self._merge_if_possible(j, X)
+        if test_now:
+            self._merge_checked_clusters(X)
         self._start_phase_if_due(X)
 
     # ------------------------------------------- user count bookkeeping
@@ -429,27 +435,32 @@ class SCLUB(ClusteringPolicy):
         self.n_splits += 1
         return new
 
-    def _merge_if_possible(self, j: int, X: np.ndarray) -> None:
-        """Merge checked clusters into j while one is close enough."""
-        merged = True
-        while merged:
-            merged = False
-            cj = self.cluster_models[j]
-            for k in list(self.members):
-                if k == j or self._n_checked.get(k, 0) != len(self.members[k]):
-                    continue
-                ck = self._cluster_model(k, X)
-                close = np.linalg.norm(cj.theta - ck.theta) < 0.5 * self._alpha_theta * (
-                    confidence_term(cj.n_obs) + confidence_term(ck.n_obs))
-                if close and self.use_frequency:
-                    t = self._n_updates
-                    p_j = cj.n_obs / (len(self.members[j]) * t)
-                    p_k = ck.n_obs / (len(self.members[k]) * t)
-                    close = abs(p_j - p_k) < self.freq_alpha * confidence_term(t)
-                if close:
-                    self._merge(j, k, X)
-                    merged = True
-                    break
+    def _merge_checked_clusters(self, X: np.ndarray) -> None:
+        """Algorithm 4: merge any two checked clusters j1 < j2 that are close, until no pair is.
+
+        The paper runs this at every round, over all pairs of checked clusters (a cluster is
+        checked when all its users are): their frequencies change with t even when their
+        estimates do not.
+        """
+        while True:
+            checked = [j for j in sorted(self.members) if self._n_checked.get(j, 0) == len(self.members[j])]
+            if len(checked) < 2:
+                return
+            models = [self._cluster_model(j, X) for j in checked]
+            thetas = np.stack([m.theta for m in models])
+            n_obs = np.array([m.n_obs for m in models], dtype=float)
+            width = np.array([confidence_term(v) for v in n_obs])
+            dist = np.linalg.norm(thetas[:, None, :] - thetas[None, :, :], axis=2)
+            close = dist < 0.5 * self._alpha_theta * (width[:, None] + width[None, :])
+            if self.use_frequency:
+                t = self._n_updates
+                p = n_obs / (np.array([len(self.members[j]) for j in checked]) * t)
+                close &= np.abs(p[:, None] - p[None, :]) < self.freq_alpha * confidence_term(t)
+            pairs = np.argwhere(np.triu(close, 1))
+            if pairs.size == 0:
+                return
+            a, b = pairs[0]
+            self._merge(checked[a], checked[b], X)
 
     def _merge(self, j: int, k: int, X: np.ndarray) -> None:
         """Merge cluster k into cluster j."""
