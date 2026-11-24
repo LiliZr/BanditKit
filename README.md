@@ -1,22 +1,23 @@
 # BanditKit
 
-Bandit algorithms in Python: multi-armed (MAB), multi-objective, linear, efficient linear
-(random projections, sketches) and multi-user linear (clustering of users). Experiments
-are reproducible (fixed seeds) and their results open in an interactive dashboard.
+BanditKit is a Python library of bandit algorithms. It covers multi-armed bandits (MAB),
+multi-objective bandits, linear bandits, efficient linear bandits (random projections, sketches)
+and multi-user linear bandits (clustering of users).
+
+Experiments are reproducible: the same seed gives the same results. Their results open in an
+interactive dashboard.
 
 > [!WARNING]
-> **Default hyperparameters are the values of the papers** (`alpha=1`: theoretical confidence bounds).
-> They are safe in theory but often explore too much in practice.
-> To fit them to your problem, run a grid search (`param_grid=True`) or set them (`bk.LinUCB(alpha=0.1)`).
-> Every experiment starts with a numbered warning. For each item, it says what to know,
-> what the default is, and how to change it.
+> **By default, each policy uses the hyperparameters of its paper.** For example, `alpha=1` gives the theoretical confidence bound.
+> When a paper gives no value (for example `lambda_` or `delta`), BanditKit picks one.
+> These defaults are safe in theory, but they often explore too much in practice.
+> To fit them to your problem, run a grid search (`param_grid=True`) or set them yourself (`bk.LinUCB(alpha=0.1)`).
+> Each experiment starts with a numbered warning. Each item says what to know, what the default is, and how to change it.
 
-## Ready example
+## Quick look
 
-The repository ships the results of six example experiments ([`results/`](results)) and the
-dashboard built from them: learning curves, final values, trade-offs between regret, CPU time and
-memory (in 3D too), a grid search, and a look inside the policies. Right after cloning, open it,
-with nothing to install:
+The repository ships six example experiments ([`results/`](results)) and the dashboard built
+from them. You can open it right after cloning, with nothing to install:
 
 ```bash
 git clone https://github.com/LiliZr/BanditKit.git
@@ -24,8 +25,7 @@ cd BanditKit
 open dashboard.html           # macOS (Linux: xdg-open dashboard.html, Windows: start dashboard.html)
 ```
 
-It loads plotly.js from the internet; its fonts are inside the page. After installing (below),
-`python -m banditkit dashboard --open` rebuilds it from `results/` and opens it.
+The page loads plotly.js from the internet. Its fonts are inside the page.
 
 ## Install
 
@@ -35,38 +35,41 @@ cd BanditKit
 pip install -e ".[all]"    # numpy, pandas, scipy, matplotlib, plotly ("[dev]" adds pytest)
 ```
 
-Python 3.10 or later. Only numpy is required; the extras add datasets and figures.
+BanditKit needs Python 3.10 or later. Only numpy is required. The extras add datasets and figures.
 
-## See the results
+## The dashboard
 
-Open [`dashboard.html`](dashboard.html) in a browser (no install, no server). It shows the
-folders of [`results/`](results):
+Open [`dashboard.html`](dashboard.html) in a browser. It needs no install and no server.
+It shows the folders of [`results/`](results).
 
-* pick a folder in the sidebar, or add folders from disk with **Open a results folder**;
-* read the setting of the run as tags, its warning as a table (what to know, default, how to
-  change it), and its key numbers (best policy, runner-up, fastest policy);
-* read the summary under the learning curve: best policy, runner-up, whether their 95% intervals
-  overlap, last policy;
-* choose, in the floating bar, the metric, cumulative or per-step values, the band (95% interval or ± 1 sd),
-  log axes, a reference policy (ratios to it), and what to do with outliers (show, crop the axis, hide);
-* compare the costs: regret against CPU time, regret against peak memory, CPU time against memory, or
-  the three at once in a 3D chart you can turn. The Pareto front (no other policy better on all axes)
-  is marked. Memory needs `measure_memory=True`;
-* hide, rename or recolor policies (in the sidebar or the legend), change the palette, zoom and pan;
-* the look is in the spirit of Apple's Liquid Glass (glass sidebar and control bar, depth, motion).
-  It follows the light or dark mode of the browser, and the sun / moon button switches it.
-  **Style** turns the glass solid. The "reduce transparency" and "reduce motion" system settings
-  turn off the glass and the motion;
-* download each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV;
-* look **inside the policies** on one traced run: score of each arm at each round, posteriors of
-  Thompson Sampling, allocation of the pulls, regret per arm, confidence ellipsoid of LinUCB,
-  arm buckets, user clusters, Pareto front.
+* **Folders.** Pick a folder in the sidebar. **Open a results folder** adds folders from your disk.
+* **Summary.** Each folder shows its settings as tags, its key numbers (best policy, runner-up,
+  fastest policy) and its launch warning.
+* **Learning curves.** A short text under the curve names the best policy and the runner-up. It
+  says whether their 95% intervals overlap, and which policy ends last.
+* **Chart controls.** The floating bar sets the metric, cumulative or per-step values, the shaded
+  area (95% interval, ± 1 sd or none), log axes and a reference policy (values become ratios to
+  it). It also sets what to do with outliers: show them, crop the axis, or hide them.
+* **Costs.** Compare regret with CPU time, regret with peak memory, or CPU time with memory.
+  A 3D chart shows the three at once and can be rotated. The Pareto front is marked: no other
+  policy is better on all axes. Memory needs `measure_memory=True`.
+* **Policies.** Hide, rename or recolor policies in the sidebar or the legend. Change the palette,
+  zoom and pan.
+* **Style.** The page follows the light or dark mode of the browser. The light / dark button and
+  the **Style** menu switch it. The "reduce motion" system setting turns off the animations.
+* **Export.** Download each chart as PNG (chosen size and DPI), SVG, PDF (vector) or CSV.
+* **Inside the policies.** One traced run shows how the policies decide: the score of each arm at
+  each round, the posteriors of Thompson Sampling, the allocation of the pulls, the regret per
+  arm, the confidence ellipsoid of LinUCB, the arm buckets, the user clusters and the Pareto front.
 
-Charts load plotly.js from the internet; `python -m banditkit dashboard --offline` embeds it too.
-The fonts (Atkinson Hyperlegible Next, Source Serif 4 and JetBrains Mono, SIL Open Font License) are always inside the page.
+After installing, `python -m banditkit dashboard --open` rebuilds the page from `results/` and
+opens it. `--offline` also embeds plotly.js in the page. The fonts (Atkinson Hyperlegible Next,
+Source Serif 4 and JetBrains Mono, SIL Open Font License) are always inside the page.
 
-Each folder of `results/` is the output of the configuration of [`configs/`](configs) with
-the same name. The problems are synthetic, drawn from fixed seeds:
+### Example results
+
+Each folder of `results/` is the output of the configuration with the same name in
+[`configs/`](configs). The problems are synthetic and drawn from fixed seeds.
 
 | Folder | Problem | Policies |
 | --- | --- | --- |
@@ -89,9 +92,15 @@ python -m banditkit dashboard results/mab-bernoulli results/mab-50 --out mab.htm
 ```
 
 `run` also takes `--n-jobs`, `--horizon`, `--results-dir`, `--dashboard PATH` and `--no-explain`.
-A results folder holds `config.json` (what was run), `results.npz` (every run), `summary.json`
-(what the dashboard reads) and `explain.json` (the "inside the policies" charts, needs plotly). A configuration names the environment, the policies and the
-settings of the experiment:
+
+A results folder holds four files:
+
+* `config.json`: what was run;
+* `results.npz`: every run;
+* `summary.json`: what the dashboard reads;
+* `explain.json`: the "inside the policies" charts (needs plotly).
+
+A configuration names the environment, the policies and the settings of the experiment:
 
 ```json
 {
@@ -102,9 +111,12 @@ settings of the experiment:
 }
 ```
 
-`env.kind`: `bernoulli`, `gaussian`, `linear`, `multi_user` (synthetic instances), `make_env`
-(arrays given in the file), `npz` (a file of your own) or `dataset` (a function of
-`banditkit.datasets`).
+`env.kind` is one of:
+
+* `bernoulli`, `gaussian`, `linear`, `multi_user`: synthetic instances;
+* `make_env`: arrays given in the file;
+* `npz`: a file of your own;
+* `dataset`: a function of `banditkit.datasets`.
 
 ### Python
 
@@ -126,11 +138,12 @@ from banditkit.report import save_run
 save_run(res, "results/my-run")                        # a folder the dashboard reads
 ```
 
-`res.to_latex()`, `res.compare(a, b)` and `res.save()` / `bk.Results.load()` work on any
-results. `banditkit.plot` draws the dashboard charts with matplotlib for papers
-(`curves`, `dispersion`, `tradeoff`, `search_landscape`, `pareto_panel`, `performance_profile`).
+`res.to_latex()`, `res.compare(a, b)` and `res.save()` / `bk.Results.load()` work on any results.
 
-A policy also works alone on data, with the names of scikit-learn:
+`banditkit.plot` draws the dashboard charts with matplotlib, for papers: `curves`, `dispersion`,
+`tradeoff`, `search_landscape`, `pareto_panel` and `performance_profile`.
+
+A policy also works alone on data, with the method names of scikit-learn:
 
 ```python
 model = bk.LinUCB(alpha=0.1).fit(X_played, rewards)    # X_played: (n, d), rewards: (n,)
@@ -147,18 +160,18 @@ model.partial_fit(A[[action]], [reward])
 | `horizon` | steps T per run |
 | `n_runs` | runs per instance; a list of environments gives several instances, pooled in the results |
 | `seed` | master seed: the same seed gives the same results |
-| `param_grid` | `None` (default): hyperparameters as given. `True`: grid search per policy. A dict: your grid |
-| `search_runs`, `search_metric` | runs per combination during the search (on other seeds), and its criterion |
+| `param_grid` | `None` (default): hyperparameters as given. `True`: grid search per policy. A dict: your own grid |
+| `search_runs`, `search_metric` | runs per combination during the search (on other seeds), and the criterion of the search |
 | `track` | extra measures: `pseudo_regret`, `pareto_regret`, `pareto_share`, `unfairness`, `clusters`, `estimates`, `actions`, `env_metrics` |
-| `measure_memory` | peak memory (slows Python code about fivefold) |
-| `log_interval` | curves keep one point every `log_interval` steps (default T // 5000: about 5000 points per run, e.g. 40 for T = 200,000); values at these points are exact, the charts join them with straight lines |
+| `measure_memory` | peak memory (makes Python code about five times slower) |
+| `log_interval` | curves keep one point every `log_interval` steps. Default: T // 5000, so about 5000 points per run (e.g. 40 for T = 200,000). Values at these points are exact |
 | `n_jobs` | parallel processes (`-1`: all CPUs) |
 | `weights` | scalarization of a multi-objective reward (default: uniform) |
 | `timeout`, `train_freq`, `checkpoint_dir`, `verbose` | CPU-time limit per run, batched updates, saved runs, messages |
 
-Stored by default: cumulative regret, cumulative reward, CPU time and wall time, at every
-logged step. The rest needs `track` or `measure_memory`, and the warning at launch lists
-what is not stored.
+By default, BanditKit stores the cumulative regret, the cumulative reward, the CPU time and the
+wall time at every logged step. The rest needs `track` or `measure_memory`. The launch warning
+lists what is not stored.
 
 **Policies** (`help(bk.LinUCB)` lists every parameter with its range and default):
 
@@ -171,46 +184,49 @@ what is not stored.
 | `sketch_size` | size of the Frequent Directions sketch (SOFUL, CBSCFD) |
 | `user_model` | multi-user LinUCB: `"shared"`, `"individual"` or `"kmeans"` |
 | `radius` | LinUCB only: `"oful"` (default) or `"li2010"`, the alpha = 1 + sqrt(ln(2/delta)/2) of Li et al. (2010), which assumes independent rewards (their Algorithm 1 also uses `lambda_=1`) |
-| `switch_factor` | LinUCB only: rarely switching OFUL (Abbasi-Yadkori et al., 2011), the optimistic estimate is recomputed only when det(V) grows by 1 + `switch_factor` (None: every step) |
+| `switch_factor` | LinUCB only: rarely switching OFUL (Abbasi-Yadkori et al., 2011). The optimistic estimate is recomputed only when det(V) grows by a factor 1 + `switch_factor` (None: every step) |
 | `subgaussian`, `theta_bound`, `reward_range` | noise level R, norm S of theta, reward range b; read from the environment when it knows them |
 
-**Arm buckets and k-means users.** Two speed-ups of linear policies, without regret guarantee
-(the launch warning recalls it when a policy uses them):
+**Arm buckets and k-means users.** These are two speed-ups of linear policies. They have no
+regret guarantee, and the launch warning says so when a policy uses them.
 
-* `n_buckets` (LinUCB, CBRAP, CLUB, SCLUB; `"sqrt"`: about √K buckets): the actions are sorted by
-  UCB and cut into buckets, rebuilt after `bucket_rebuild_freq` updates (500). A step compares the
-  best action of each bucket, then searches the chosen bucket only. `bucket_by_ucb=False` sorts by
-  estimated mean instead; `refresh_champions` updates the best action of a bucket after each step.
-* `user_model="kmeans"` (LinUCB): one model per user, pulled towards the centroid of its cluster
-  with weight n_u / (n_u + cluster size). The clusters come from a k-means on the user estimates:
+* `n_buckets` (LinUCB, CBRAP, CLUB, SCLUB; `"sqrt"` gives about √K buckets). The actions are
+  sorted by UCB and cut into buckets. The buckets are rebuilt every `bucket_rebuild_freq` updates
+  (500). A step compares the best action of each bucket, then searches the chosen bucket only.
+  `bucket_by_ucb=False` sorts by estimated mean instead. `refresh_champions` updates the best
+  action of a bucket after each step.
+* `user_model="kmeans"` (LinUCB). Each user has its own model, pulled towards the centroid of its
+  cluster with weight n_u / (n_u + cluster size). A k-means on the user estimates gives
   `n_user_clusters` clusters, recomputed every `user_recluster_freq` steps (2000).
 
 Some theoretical values explore much more than usual tuned values: LinTS (sampling scale
 R sqrt(9 d ln(t/delta))), Gaussian Thompson Sampling (variance b² / (n + 1)) and SCLUB
 (split threshold 4 R sqrt(d / lambda_x)). CLUB has no theoretical value for `alpha` and
-`cluster_alpha`; its paper tunes them on the data.
+`cluster_alpha`: its paper tunes them on the data.
 
-**What the theory covers.** The launch warning lists the defaults with no value from theory
-(`lambda_`, `delta`, `rho` of UCB-V2 and UCB-minV2, `c` of the `"auer"` schedule of epsilon-greedy...)
-and the policies with no proven regret bound: UCB1-Tuned (its paper proves none), CBRAP (its
-erratum gives a bound linear in T), constant epsilon-greedy and softmax, and every policy with a
-random projection, arm buckets or k-means users.
+**What the theory covers.** The launch warning lists two things:
+
+* the defaults with no value from theory: `lambda_`, `delta`, `rho` of UCB-V2 and UCB-minV2,
+  `c` of the `"auer"` schedule of epsilon-greedy...;
+* the policies with no proven regret bound: UCB1-Tuned (its paper proves none), CBRAP (its
+  erratum gives a bound linear in T), constant epsilon-greedy, softmax, and every policy with a
+  random projection, arm buckets or k-means users.
 
 ## Datasets
 
 * **Synthetic**: `bk.sample_instances("bernoulli" | "gaussian" | "mixed" | "linear" | "multi_user", n_instances, ...)`.
   `"mixed"` draws each arm from a mixture of 2 or 3 components (Bernoulli, Beta, uniform, Gaussian clipped
-  to [0, 1]), so no single family fits the rewards (`bk.MixtureMAB` builds one by hand).
+  to [0, 1]), so no single family fits the rewards. `bk.MixtureMAB` builds one by hand.
 * **MovieLens** ([GroupLens](https://grouplens.org/datasets/movielens/)): downloaded on first use
   into `~/banditkit_data` (or `$BANDITKIT_DATA`). Variants `small`, `1m`, `20m`, `25m`, `32m`.
 * **Steam** ([Kaggle](https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam)):
-  needs a Kaggle account, so download it once by hand:
+  it needs a Kaggle account, so download it once by hand:
 
   ```bash
   kaggle datasets download -d antonkozyriev/game-recommendations-on-steam -p ~/banditkit_data/steam --unzip
   ```
 
-The dataset functions are examples of preprocessing taken from published experiments:
+The dataset functions follow the preprocessing of published experiments:
 
 | Function | Environment | Preprocessing |
 | --- | --- | --- |
@@ -220,7 +236,7 @@ The dataset functions are examples of preprocessing taken from published experim
 | `datasets.movielens_mab(variant, arms="genres" or "movies")` | MAB | a step returns one real rating / 5 of a movie of the arm (Gupta et al., 2021) |
 | `datasets.rewards_to_mab(groups)` | MAB | the same on any observed rewards |
 
-Your own data: environments take plain arrays.
+For your own data, environments take plain arrays:
 
 | Problem | Arrays | Environment |
 | --- | --- | --- |
@@ -230,8 +246,8 @@ Your own data: environments take plain arrays.
 | Multi-user linear | `action_features` (K, d), `user_thetas` (U, d), optional `user_stream` (T,) | `bk.make_env(action_features=..., user_thetas=...)` |
 | Group recommendation | `relevance` (members, K) in [0, 1] | `bk.GroupRecommendationMAB(relevance)` |
 
-The same arrays saved in an `.npz` file load with `datasets.load_npz(path)` (keys in
-`banditkit/datasets/base.py`).
+The same arrays saved in an `.npz` file load with `datasets.load_npz(path)`. The keys are listed
+in `banditkit/datasets/base.py`.
 
 ## Policies
 
